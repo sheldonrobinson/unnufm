@@ -1,6 +1,7 @@
 #pragma once
 
 #include "c-api.h"
+#include <unnu_tts/cxx-api.h>
 #include <set>
 #include <nlohmann/json.hpp>
 
@@ -216,8 +217,7 @@ namespace unnufm {
 	};
 	
 	struct Audio {
-		std::vector<float> audio;
-		int sr;
+		unnutts::audio_sample_ptr ptr;
 		std::string text;
 	};
 	
@@ -265,7 +265,6 @@ namespace unnufm {
 		std::vector<Scene> scenes;
 		void addScene(const Scene& scene);
 
-
 		Scene& addSceneReturnRef(const Scene& scene);
 		
 		std::string exportToEDL() const;
@@ -275,28 +274,12 @@ namespace unnufm {
 		static std::string formatSRTTime(double seconds);
 		
 		std::string exportToSRT() const;
+
+		std::string firstSceneID() const {
+			if (scenes.empty()) return "";
+			return scenes.front().sceneID;
+		}
 		
-	};
-
-
-	// =====================
-	// Voice Map
-	// =====================
-
-	class VoiceMap {
-	public:
-		void setVoice(const std::string& speaker, int32_t speaker_id, bool is_robot) {
-			voices[speaker] = std::make_pair(speaker_id, is_robot);
-		}
-
-		std::pair<int32_t, bool> getVoice(const std::string& speaker) const {
-			auto it = voices.find(speaker);
-			if (it != voices.end()) return it->second;
-			return std::make_pair(-1, false);
-		}
-
-	private:
-		std::map<std::string, std::pair<int32_t, bool>> voices;
 	};
 
 	// =====================
@@ -313,12 +296,13 @@ namespace unnufm {
 			if(speaker.first >= 0) {
 				if(!line.text.empty()){
 					ut_audio_sample_t* result = unnu_tts(speaker.first, line.emotion, speaker.second, line.text.c_str());
-					if(result->num_samples > 0){
-						float* samples = result->samples;
-						int n = result->num_samples;
-						std::vector<float> v(samples, samples + n);
-						audio.audio = v;
-					}
+					audio.ptr.reset(result);
+					// if(result->num_samples > 0){
+					// 	float* samples = result->samples;
+					//	int n = result->num_samples;
+					//	std::vector<float> v(samples, samples + n);
+					//	audio.audio = v;
+					// }
 				}
 			}
 			return audio;
@@ -333,29 +317,6 @@ namespace unnufm {
 			if (it != voices.end()) return it->second;
 			return std::make_pair(-1, false);
 		}
-	};
-
-	// ---------------- ActorManager Class ----------------
-	class ActorManager {
-	private:
-		PiperTTS tts;
-		// Send audio file path to UE5 for Speech2Face processing
-		void SendSkitToUnrealEngine(const Skit& skit);
-	public:
-
-		ActorManager(PiperTTS& ttsEngine) : tts(ttsEngine) {}
-		
-		Performance toPerformance(const CueLine& line);
-		
-		Take toTake(const Cue& cue);
-		
-		Skit toSkit(const Scene& scene);
-	
-		void perform(const Scene& scene);
-		
-		
-		
-		
 	};
 
 	// ---------------- Skit Grabber ----------------
@@ -375,18 +336,22 @@ namespace unnufm {
 
 
 	// ---------------- Dialog Manager ----------------
-	class DialogManager {
+	class ProductionWrangler {
 	private:
-		ActorManager& actorManager;
+		PiperTTS& tts;
 		std::map<std::string, Scene> scenes;
 		Storyboard storyboard;
+		// Send audio file path to UE5 for Speech2Face processing
+		void SendSkitToUnrealEngine(const Skit& skit);
 	public:
 		
-		DialogManager(ActorManager& actors) : actorManager(actors) {}
+		ProductionWrangler(PiperTTS& actors) : tts(actors) {}
 
-		DialogManager(ActorManager& actors, const std::string& script)  : actorManager(actors) {
+		ProductionWrangler(PiperTTS& actors, const std::string& script)  : tts(actors) {
 			load(script);
 		}
+
+		ProductionWrangler(PiperTTS& actors, Storyboard& script) : tts(actors), storyboard(script) {}
 
 		
 		void load(const std::string& script) {
@@ -406,13 +371,21 @@ namespace unnufm {
 			return scenes[sceneId];
 		}
 
+		Performance toPerformance(const CueLine& line);
+
+		Take toTake(const Cue& cue);
+
+		Skit toSkit(const Scene& scene);
+
+		void perform(const Scene& scene);
+
 		std::string play(std::string sceneId) {
 			auto it = scenes.find(sceneId);
             if (it == scenes.end()) {
 				return "";
 			}
 			Scene& scene = it->second;
-			actorManager.perform(scene);
+			perform(scene);
 			return scene.jump;
 		}
 	};
@@ -420,10 +393,10 @@ namespace unnufm {
 	class SceneManager {
 
 	public:
-		SceneManager(DialogManager&  manager) : screenManager(manager) {}
+		SceneManager(ProductionWrangler&  manager) : wrangler(manager) {}
 
 		void LoadStoryboard(const std::string& script) {
-			screenManager.load(script);
+			wrangler.load(script);
 		}
 
 		void run(const std::string& startScene) {
@@ -431,16 +404,11 @@ namespace unnufm {
 
 			while (!currentScene.empty()) {
 				// go to next scene
-				currentScene = screenManager.play(currentScene);
+				currentScene = wrangler.play(currentScene);
 			}
 		}
 
 	private:
-		DialogManager& screenManager;
-		std::map<std::string, Scene> scenes;
+		ProductionWrangler& wrangler;
 	};
-	
-	
 }
-
-

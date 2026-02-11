@@ -1,4 +1,5 @@
 #include <sstream>
+#include <thread>
 #include <concurrentqueue.h>
 #include <nlohmann/json.hpp>
 #include <unnu_tts/cxx-api.h>
@@ -225,6 +226,7 @@ std::set<std::string> unnufm::ScriptParser::getCreditedActorsInStoryboard(const 
 			}
 		}
 	}
+	return actors;
 }
 
 std::set<std::string> unnufm::ScriptParser::getCreditedActorsInScene(const Scene& scene) {
@@ -234,16 +236,17 @@ std::set<std::string> unnufm::ScriptParser::getCreditedActorsInScene(const Scene
 			if (!line.speaker.empty() && !line.text.empty()) actors.insert(line.speaker);
 		}
 	}
+	return actors;
 }
 
-unnufm::Performance unnufm::ActorManager::toPerformance(const CueLine& line) {
+unnufm::Performance unnufm::ProductionWrangler::toPerformance(const CueLine& line) {
 	Performance placeholder;
 	placeholder.line = line;
 	placeholder.audio = tts.speak(line);
 	return placeholder;
 }
 		
-unnufm::Take unnufm::ActorManager::toTake(const Cue& cue) {
+unnufm::Take unnufm::ProductionWrangler::toTake(const Cue& cue) {
 	Take take;
 	take.timing = cue.timing;
 	take.stagger = cue.stagger;
@@ -254,23 +257,25 @@ unnufm::Take unnufm::ActorManager::toTake(const Cue& cue) {
 		Performance p = toPerformance(line);
 		take.performances.push_back(std::move(p));
 	}
+	return take;
 }
 
-unnufm::Skit unnufm::ActorManager::toSkit(const Scene& scene) {
+unnufm::Skit unnufm::ProductionWrangler::toSkit(const Scene& scene) {
 	Skit skit;
 	skit.sceneID = scene.sceneID;
 	for(const Cue& cue : scene.cues) {
 		Take t = toTake(cue);
 		skit.takes.push_back(std::move(t));
 	}
+	return skit;
 }
 
-void unnufm::ActorManager::perform(const Scene& scene) {
+void unnufm::ProductionWrangler::perform(const Scene& scene) {
 	Skit s = toSkit(scene);
 	SendSkitToUnrealEngine(s);
 }
 
-void unnufm::ActorManager::SendSkitToUnrealEngine(const Skit& skit) {
+void unnufm::ProductionWrangler::SendSkitToUnrealEngine(const Skit& skit) {
 	skits.enqueue(skit);
 }
 
@@ -293,8 +298,8 @@ void unnu_fm_process_script(const char* script) {
 			id = ut_get_speaker_id("male"); // ensure speaker is loaded in TTS
 		}
 		if (id < 0) {
-				id = ut_get_speaker_id(speaker.c_str());
-			}
+			id = ut_get_speaker_id(speaker.c_str());
+		}
 
 		if (id >= 0) {
 			// For demonstration, assign robot voices to Manny and Quinn
@@ -306,6 +311,17 @@ void unnu_fm_process_script(const char* script) {
 			}
 		}
 	}
+	unnufm::ProductionWrangler wrangler(tts, story);
+	for(const unnufm::Scene& scene : story.scenes) {
+		wrangler.perform(scene);
+	}
+	
+	std::thread th([&wrangler](){
+		unnufm::SceneManager sm(wrangler);
+		sm.run(wrangler.getStoryboard().firstSceneID());
+	});
+	
+	th.detach();
 }
 
 bool unnufm::SkitGrabber::grab(Skit& skit) {
