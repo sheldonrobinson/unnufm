@@ -18,10 +18,14 @@ else()
 	set(BUILD_SHARED_LIBS_DEFAULT ON)
 endif()
 
-option(UFM_BUILD_SHARED_LIBS "Build Unnu Film Maker as shared library" ${BUILD_SHARED_LIBS_DEFAULT})
+option(UF_BUILD_SHARED_LIBS "Build Unnu Film Maker as shared library" ${BUILD_SHARED_LIBS_DEFAULT})
 
 if (WIN32)
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+endif()
+
+if (MSVC)
+	set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
 #################### MSVC vcvars
@@ -158,7 +162,7 @@ set_target_properties(unnufm PROPERTIES
 target_include_directories(unnufm PUBLIC include)
 target_compile_features   (unnufm PRIVATE cxx_std_17) # don't bump
 
-if (UT_BUILD_SHARED_LIBS)
+if (UF_BUILD_SHARED_LIBS)
     set_target_properties(unnufm PROPERTIES POSITION_INDEPENDENT_CODE ON)
     target_compile_definitions(unnufm PRIVATE UNNU_FM_BUILD)
     target_compile_definitions(unnufm PUBLIC  UNNU_FM_SHARED)

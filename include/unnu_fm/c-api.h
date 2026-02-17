@@ -29,6 +29,6 @@
 
 #include "types.h"
 
-UNNU_FM_API void unnu_fm_submit_script(const char* script);
+UNNU_FM_API void unnu_fm_process_script(const char* script);
 
 #endif //_UNNU_FM_H

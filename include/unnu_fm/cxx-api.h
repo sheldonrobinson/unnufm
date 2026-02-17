@@ -1,7 +1,6 @@
 #pragma once
 
 #include "c-api.h"
-#include <unnu_tts/cxx-api.h>
 #include <set>
 #include <nlohmann/json.hpp>
 
@@ -10,7 +9,66 @@ namespace unnufm {
 	// =====================
 	// Data Structures
 	// =====================
+	
+	
+	static unnu_motion_t unnu_motion_from_string(const std::string & type_str) {
+		if (type_str == "stand") {
+			return unnu_motion::MOTION_STAND;
+		}
+		if (type_str == "sit") {
+			return unnu_motion::MOTION_SIT;
+		}
+		if (type_str == "lie") {
+			return unnu_motion::MOTION_LIE;
+		}
+		if (type_str == "walk") {
+			return unnu_motion::MOTION_WALK;
+		}
+		if (type_str == "jog") {
+			return unnu_motion::MOTION_JOG;
+		}
+		if (type_str == "run") {
+			return unnu_motion::MOTION_RUN;
+		}
+		return unnu_motion::MOTION_NONE;
+	}
 
+	static std::string unnu_motion_to_string(unnu_motion type) {
+		switch (type) {
+			case MOTION_NONE: return "";
+			case MOTION_STAND: return "stand";
+			case MOTION_SIT: return "sit";
+			case MOTION_LIE: return "lie";
+			case MOTION_WALK: return "walk";
+			case MOTION_JOG: return "jog";
+			case MOTION_RUN: return "run";
+			default:  return "";
+		}
+	}
+	
+
+	static unnu_scene_timing unnu_scene_timing_from_string(const std::string & type_str) {
+		if (type_str == "sequential") {
+			return unnu_scene_timing::TIMING_SEQUENTIAL;
+		}
+		if (type_str == "simultaneous") {
+			return unnu_scene_timing::TIMING_SIMULTANEOUS;
+		}
+		if (type_str == "overlap") {
+			return unnu_scene_timing::TIMING_OVERLAP;
+		}
+		return unnu_scene_timing::TIMING_SEQUENTIAL;
+	}
+
+	static std::string unnu_scene_timing_to_string(unnu_scene_timing type) {
+		switch (type) {
+			case TIMING_SEQUENTIAL: return "sequential";
+			case TIMING_SIMULTANEOUS: return "simultaneous";
+			case TIMING_OVERLAP: return "overlap";
+			default:  return "sequential";
+		}
+	}
+	
 	static unnu_sound_cue_type sound_cue_type_from_string(const std::string & type_str) {
 		if (type_str == "sfx") {
 			return unnu_sound_cue_type::SOUND_SFX;
@@ -54,8 +112,11 @@ namespace unnufm {
 		if (size_str == "wide") {
 			return unnu_camera_shot_size::CAMERA_SIZE_WIDE;
 		}
-		if (size_str == "medium_full") {
-			return unnu_camera_shot_size::CAMERA_SIZE_MEDIUM_FULL;
+		if (size_str == "cowboy") {
+			return unnu_camera_shot_size::CAMERA_SIZE_COWBOY;
+		}
+		if (size_str == "medium_wide") {
+			return unnu_camera_shot_size::CAMERA_SIZE_MEDIUM_WIDE;
 		}
 		if (size_str == "medium_close_up") {
 			return unnu_camera_shot_size::CAMERA_SIZE_MEDIUM_CLOSE_UP;
@@ -76,7 +137,8 @@ namespace unnufm {
 			case CAMERA_SIZE_FULL: return "full";
 			case CAMERA_SIZE_CLOSE_UP: return "close_up";
 			case CAMERA_SIZE_WIDE: return "wide";
-			case CAMERA_SIZE_MEDIUM_FULL: return "medium_full";
+			case CAMERA_SIZE_COWBOY: return "cowboy";
+			case CAMERA_SIZE_MEDIUM_WIDE: return "medium_wide";
 			case CAMERA_SIZE_MEDIUM_CLOSE_UP: return "medium_close_up";
 			case CAMERA_SIZE_EXTREME_CLOSE_UP: return "extreme_close_up";
 			case CAMERA_SIZE_EXTREME_WIDE: return "extreme_wide";
@@ -131,8 +193,8 @@ namespace unnufm {
 	}
 
 	static unnu_camera_shot_movement camera_shot_movement_from_string(const std::string & move_str) {
-		if (move_str == "static") {
-			return unnu_camera_shot_movement::CAMERA_MOVEMENT_STATIC;
+		if (move_str == "fixed") {
+			return unnu_camera_shot_movement::CAMERA_MOVEMENT_FIXED;
 		}
 		if (move_str == "pan_left") {
 			return unnu_camera_shot_movement::CAMERA_MOVEMENT_PAN_LEFT;
@@ -164,12 +226,12 @@ namespace unnufm {
 		if (move_str == "trucking") {
 			return unnu_camera_shot_movement::CAMERA_MOVEMENT_TRUCKING;
 		}
-		return unnu_camera_shot_movement::CAMERA_MOVEMENT_STATIC;
+		return unnu_camera_shot_movement::CAMERA_MOVEMENT_FIXED;
 	}
 
 	static std::string camera_shot_movement_to_string(unnu_camera_shot_movement type) {
 		switch (type) {
-			case CAMERA_MOVEMENT_STATIC: return "static";
+			case CAMERA_MOVEMENT_FIXED: return "fixed";
 			case CAMERA_MOVEMENT_PAN_LEFT: return "pan_left";
 			case CAMERA_MOVEMENT_PAN_RIGHT: return "pan_right";
 			case CAMERA_MOVEMENT_TILT_UP: return "tilt_up";
@@ -180,81 +242,91 @@ namespace unnufm {
 			case CAMERA_MOVEMENT_ZOOM_OUT: return "zoom_out";
 			case CAMERA_MOVEMENT_TRACKING: return "tracking";
 			case CAMERA_MOVEMENT_TRUCKING: return "trucking";
-			default:  return "static";
+			default:  return "fixed";
 		}
 	}
 
-	struct SoundCue {
+	typedef struct SoundCue {
 		unnu_sound_cue_type type; // "music", "sfx", "ambient"
 		std::string uri;
 		double time = 0.0;
-	};
+	} sound_cue_t;
 
-	struct CameraCue {
+	typedef struct CameraCue {
 		unnu_camera_shot_size size = unnu_camera_shot_size::CAMERA_SIZE_DEFAULT;
 		unnu_camera_shot_angle angle = unnu_camera_shot_angle::CAMERA_ANGLE_DEFAULT;
-		unnu_camera_shot_movement movement = unnu_camera_shot_movement::CAMERA_MOVEMENT_STATIC;
-		std::string location;
+		unnu_camera_shot_movement movement = unnu_camera_shot_movement::CAMERA_MOVEMENT_FIXED;
 		std::string target;
 		double duration = 0.0;
-		double time = 0.0;
-	};
+		double transition = 0.0;
+	} camera_cue_t;
 
-	struct Action {
+	typedef struct Action {
+		unnu_motion_t motion;
 		std::string gesture;
+		std::string target;
 		double delay = 0.0;
 		bool persistent = false;
-	};
+	} action_t;
 
 	typedef struct CueLine {
 		std::string speaker;
 		std::string text;
 		double pause = 0.0;
 		double delay = 0.0;
-		std::vector<Action> actions;
+		std::vector<action_t> actions;
 		EEMOTION emotion = EEMOTION::EMOTION_NEUTRAL;
 		bool lipSync = true;
-	};
+	} cue_line_t;
 	
-	struct Audio {
-		unnutts::audio_sample_ptr ptr;
+	typedef struct AudioChunk{
+		std::vector<float> samples;
+		int sample_rate;
+	} audio_chunk_t;
+
+	typedef struct Audio {
+		audio_chunk_t chunk;
 		std::string text;
-	};
+	} audio_t;
 	
-	struct Performance {
-		Audio audio;
-		CueLine line;
-	};
+	typedef struct Performance {
+		audio_t audio;
+		cue_line_t line;
+	} performance_t;
 
-	struct Cue {
-		std::string timing; // sequential, simultaneous, overlap, branch
+	typedef struct Cue {
+		unnu_scene_timing_t timing; // sequential, simultaneous, overlap, branch
 		double stagger = 0.7; // NEW: default stagger for overlap
 		bool dynamic = false; // NEW: allow real-time modification
-		std::vector<CueLine> lines;
-		std::vector<SoundCue> sounds;
-		std::vector<CameraCue> shots;
-	};
+		std::vector<cue_line_t> lines;
+		std::vector<sound_cue_t> sounds;
+		std::vector<camera_cue_t> shots;
+	} cue_t;
 	
-	struct Take {
-		std::string timing; // sequential, simultaneous, overlap, branch
+	typedef struct Take {
+		unnu_scene_timing_t timing; // sequential, simultaneous, overlap, branch
 		double stagger = 0.7; // NEW: default stagger for overlap
 		bool dynamic = false; // NEW: allow real-time modification
-		std::vector<Performance> performances;
-		std::vector<SoundCue> sounds;
-		std::vector<CameraCue> shots;
-	};
+		std::vector<performance_t> performances;
+		std::vector<sound_cue_t> sounds;
+		std::vector<camera_cue_t> shots;
+	} take_t;
 
-	struct Scene {
+	typedef struct Scene {
 		std::string sceneID;
-		std::vector<Cue> cues;
+		std::string location;
+		std::string stage;
+		std::vector<cue_t> cues;
 		std::string jump;
-	};
+	} scene_t;
 	
-	struct Skit {
+	typedef struct Skit {
 		std::string sceneID;
-		std::vector<Take> takes;
+		std::string location;
+		std::string stage;
+		std::vector<take_t> takes;
 		std::string jump;
-	};
+	} skit_t;
 	
 	// ---------------- Storyboard Class ----------------
 	class Storyboard {
@@ -262,10 +334,10 @@ namespace unnufm {
 		
 
 	public:
-		std::vector<Scene> scenes;
-		void addScene(const Scene& scene);
+		std::vector<scene_t> scenes;
+		void addScene(const scene_t& scene);
 
-		Scene& addSceneReturnRef(const Scene& scene);
+		scene_t& addSceneReturnRef(const scene_t& scene);
 		
 		std::string exportToEDL() const;
 		
@@ -289,40 +361,17 @@ namespace unnufm {
 	private:
 		std::map<std::string, std::pair<int32_t, bool>> voices;
 	public:
-		Audio speak(const CueLine& line) {
-			Audio audio;
-			audio.text = line.text;
-			auto& speaker = getVoice(line.speaker);
-			if(speaker.first >= 0) {
-				if(!line.text.empty()){
-					ut_audio_sample_t* result = unnu_tts(speaker.first, line.emotion, speaker.second, line.text.c_str());
-					audio.ptr.reset(result);
-					// if(result->num_samples > 0){
-					// 	float* samples = result->samples;
-					//	int n = result->num_samples;
-					//	std::vector<float> v(samples, samples + n);
-					//	audio.audio = v;
-					// }
-				}
-			}
-			return audio;
-		}
+		audio_t speak(const cue_line_t& line);
 
-		void setVoice(const std::string& speaker, int32_t speaker_id, bool is_robot) {
-			voices[speaker] = std::make_pair(speaker_id, is_robot);
-		}
+		void setVoice(const std::string& speaker, int32_t speaker_id, bool is_robot);
 
-		std::pair<int32_t, bool> getVoice(const std::string& speaker) const {
-			auto it = voices.find(speaker);
-			if (it != voices.end()) return it->second;
-			return std::make_pair(-1, false);
-		}
+		std::pair<int32_t, bool> getVoice(const std::string& speaker) const;
 	};
 
 	// ---------------- Skit Grabber ----------------
 	class SkitGrabber {
 	public:
-		static bool grab(Skit& skit);
+		static bool grab(skit_t& skit);
 	};
 
 	// ---------------- Script Parser ----------------
@@ -331,7 +380,7 @@ namespace unnufm {
 
 		static Storyboard toStoryboard(const nlohmann::json& j);
 		static std::set<std::string> getCreditedActorsInStoryboard(const Storyboard& storyboard);
-		static std::set<std::string> getCreditedActorsInScene(const Scene& scene);
+		static std::set<std::string> getCreditedActorsInScene(const scene_t& scene);
 	};
 
 
@@ -339,29 +388,19 @@ namespace unnufm {
 	class ProductionWrangler {
 	private:
 		PiperTTS& tts;
-		std::map<std::string, Scene> scenes;
+		std::map<std::string, scene_t> scenes;
 		Storyboard storyboard;
 		// Send audio file path to UE5 for Speech2Face processing
-		void SendSkitToUnrealEngine(const Skit& skit);
+		void SendSkitToUnrealEngine(const skit_t& skit);
 	public:
 		
 		ProductionWrangler(PiperTTS& actors) : tts(actors) {}
 
-		ProductionWrangler(PiperTTS& actors, const std::string& script)  : tts(actors) {
-			load(script);
-		}
+		ProductionWrangler(PiperTTS& actors, const std::string& script);
 
 		ProductionWrangler(PiperTTS& actors, Storyboard& script) : tts(actors), storyboard(script) {}
-
-		
-		void load(const std::string& script) {
-			nlohmann::json j = nlohmann::json::parse(script);
-			
-			storyboard = ScriptParser::toStoryboard(j);
-			for(const Scene& scene : storyboard.scenes){
-				scenes[scene.sceneID] = scene;
-			}
-		}
+				
+		void load(const std::string& script);
 		
 		Storyboard getStoryboard() const {
 			return storyboard;
@@ -371,23 +410,15 @@ namespace unnufm {
 			return scenes[sceneId];
 		}
 
-		Performance toPerformance(const CueLine& line);
+		Performance toPerformance(const cue_line_t& line);
 
-		Take toTake(const Cue& cue);
+		Take toTake(const cue_t& cue);
 
-		Skit toSkit(const Scene& scene);
+		Skit toSkit(const scene_t& scene);
 
-		void perform(const Scene& scene);
+		void perform(const scene_t& scene);
 
-		std::string play(std::string sceneId) {
-			auto it = scenes.find(sceneId);
-            if (it == scenes.end()) {
-				return "";
-			}
-			Scene& scene = it->second;
-			perform(scene);
-			return scene.jump;
-		}
+		std::string play(std::string sceneId);
 	};
 	// ---------------- Scene Manager ------------------
 	class SceneManager {
@@ -395,18 +426,9 @@ namespace unnufm {
 	public:
 		SceneManager(ProductionWrangler&  manager) : wrangler(manager) {}
 
-		void LoadStoryboard(const std::string& script) {
-			wrangler.load(script);
-		}
+		void LoadStoryboard(const std::string& script);
 
-		void run(const std::string& startScene) {
-			std::string currentScene = startScene;
-
-			while (!currentScene.empty()) {
-				// go to next scene
-				currentScene = wrangler.play(currentScene);
-			}
-		}
+		void run(const std::string& startScene);
 
 	private:
 		ProductionWrangler& wrangler;

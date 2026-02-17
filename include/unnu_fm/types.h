@@ -9,20 +9,28 @@
 	#include <stdbool.h>
 #endif
 
-#ifdef __cplusplus
-	#include <cstdint>
-	#include <cstdbool>
-#else // __cplusplus - Objective-C or other C platform
-	#include <stdint.h>
-	#include <stdbool.h>
-#endif
-
 #include <unnu_tts/types.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+
+typedef enum unnu_scene_timing {
+	TIMING_SEQUENTIAL = 0,
+	TIMING_SIMULTANEOUS = 1,
+	TIMING_OVERLAP = 2
+} unnu_scene_timing_t;
+
+typedef enum unnu_motion {
+	MOTION_NONE = 0,
+	MOTION_STAND = 1,
+	MOTION_SIT = 2,
+	MOTION_LIE = 3,
+	MOTION_WALK = 4,
+	MOTION_JOG = 5,
+	MOTION_RUN = 6
+} unnu_motion_t;
 
 typedef enum unnu_sound_cue_type {
 	SOUND_DEFAULT = 0,
@@ -39,10 +47,11 @@ typedef enum unnu_camera_shot_size {
 	CAMERA_SIZE_FULL = 2,
 	CAMERA_SIZE_CLOSE_UP = 3,
 	CAMERA_SIZE_WIDE = 4,
-	CAMERA_SIZE_MEDIUM_FULL = 5,
-	CAMERA_SIZE_MEDIUM_CLOSE_UP = 6,
-	CAMERA_SIZE_EXTREME_CLOSE_UP = 7,
-	CAMERA_SIZE_EXTREME_WIDE = 8
+	CAMERA_SIZE_COWBOY = 5,
+	CAMERA_SIZE_MEDIUM_WIDE = 6,
+	CAMERA_SIZE_MEDIUM_CLOSE_UP = 7,
+	CAMERA_SIZE_EXTREME_CLOSE_UP = 8,
+	CAMERA_SIZE_EXTREME_WIDE = 9
 } unnu_camera_shot_size_t;
 
 
@@ -61,7 +70,7 @@ typedef enum unnu_camera_shot_angle {
 
 
 typedef enum unnu_camera_shot_movement {
-	CAMERA_MOVEMENT_STATIC = 0,
+	CAMERA_MOVEMENT_FIXED = 0,
 	CAMERA_MOVEMENT_PAN_LEFT = 1,
 	CAMERA_MOVEMENT_PAN_RIGHT = 2,
 	CAMERA_MOVEMENT_TILT_UP = 3,

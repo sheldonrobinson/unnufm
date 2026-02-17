@@ -7,13 +7,13 @@
 
 static moodycamel::ConcurrentQueue<unnufm::Storyboard> scenequeue;
 
-static moodycamel::ConcurrentQueue<unnufm::Skit> skits;
+static moodycamel::ConcurrentQueue<unnufm::skit_t> skits;
 
 
-void unnufm::Storyboard::addScene(const Scene& scene) {
+void unnufm::Storyboard::addScene(const scene_t& scene) {
 	scenes.push_back(scene);
 }
-unnufm::Scene& unnufm::Storyboard::addSceneReturnRef(const Scene& scene) {
+unnufm::scene_t& unnufm::Storyboard::addSceneReturnRef(const scene_t& scene) {
 	scenes.push_back(scene);
 	return scenes.back();
 }
@@ -115,7 +115,7 @@ std::string unnufm::Storyboard::exportToSRT() const {
 			double cueStart = currentTime;
 			double cueDuration = 0.0;
 
-			if (cue.timing == "simultaneous") {
+			if (cue.timing == unnu_scene_timing::TIMING_SIMULTANEOUS) {
 				// All lines start together
 				double start = cueStart;
 				double end = start;
@@ -154,19 +154,21 @@ unnufm::Storyboard unnufm::ScriptParser::toStoryboard(const nlohmann::json& j) {
 	Storyboard sb;
 
 	for (auto& sceneJson : j["scenes"]) {
-		Scene scene;
+		scene_t scene;
 		scene.sceneID = sceneJson["sceneID"].get<std::string>();
+		if (sceneJson.contains("location")) scene.location = sceneJson["location"].get<std::string>();
+		if (sceneJson.contains("stage")) scene.stage = sceneJson["stage"].get<std::string>();
 		if (sceneJson.contains("jump")) scene.jump = sceneJson["jump"].get<std::string>();
 
 		for (auto& cueJson : sceneJson["cues"]) {
-			Cue cue;
-			cue.timing = cueJson["timing"].get<std::string>();
+			cue_t cue;
+			cue.timing = unnufm::unnu_scene_timing_from_string(cueJson["timing"].get<std::string>());
 			if (cueJson.contains("stagger")) cue.stagger = cueJson["stagger"].get<double>();
 			if (cueJson.contains("dynamic")) cue.dynamic = cueJson["dynamic"].get<bool>();
 
 			if (cueJson.contains("lines")) {
 				for (auto& lineJson : cueJson["lines"]) {
-					CueLine line;
+					cue_line_t line;
 					line.speaker = lineJson["speaker"].get<std::string>();
 					if (lineJson.contains("text")) line.text = lineJson["text"].get<std::string>();
 					if (lineJson.contains("pause")) line.pause = lineJson["pause"].get<double>();
@@ -175,7 +177,7 @@ unnufm::Storyboard unnufm::ScriptParser::toStoryboard(const nlohmann::json& j) {
 					if (lineJson.contains("lip_sync")) line.lipSync = lineJson["lip_sync"].get<bool>();
 					if (lineJson.contains("actions")) {
 						for (auto& actionJson : lineJson["actions"]) {
-							Action action;
+							action_t action;
 							action.gesture = actionJson["gesture"].get<std::string>();
 							if (actionJson.contains("persistent")) action.persistent = actionJson["persistent"].get<bool>();
 							if (actionJson.contains("delay")) action.delay = actionJson["delay"].get<double>();
@@ -188,7 +190,7 @@ unnufm::Storyboard unnufm::ScriptParser::toStoryboard(const nlohmann::json& j) {
 			
 			if (cueJson.contains("sounds")) {
 				for (auto& soundJson : cueJson["sounds"]) {
-					SoundCue soundCue;
+					sound_cue_t soundCue;
 					soundCue.uri = soundJson["uri"].get<std::string>();
 					if (soundJson.contains("type")) soundCue.type = sound_cue_type_from_string(soundJson["type"].get<std::string>());
 					if (soundJson.contains("time")) soundCue.time = soundJson["time"].get<double>();
@@ -197,15 +199,14 @@ unnufm::Storyboard unnufm::ScriptParser::toStoryboard(const nlohmann::json& j) {
 			}
 			if (cueJson.contains("shots")) {
 				for (auto& cameraJson : cueJson["shots"]) {
-					CameraCue cameraCue;
+					camera_cue_t cameraCue;
 					
-					if (cameraJson.contains("location")) cameraCue.location = cameraJson["location"].get<std::string>();
 					if (cameraJson.contains("size")) cameraCue.size = camera_shot_size_from_string(cameraJson["size"].get<std::string>());
 					if (cameraJson.contains("angle")) cameraCue.angle = camera_shot_angle_from_string(cameraJson["angle"].get<std::string>());
 					if (cameraJson.contains("movement")) cameraCue.movement = camera_shot_movement_from_string(cameraJson["movement"].get<std::string>());
 					if (cameraJson.contains("target")) cameraCue.target = cameraJson["target"].get<std::string>();
 					if (cameraJson.contains("duration")) cameraCue.duration = cameraJson["duration"].get<double>();
-					if (cameraJson.contains("time")) cameraCue.time = cameraJson["time"].get<double>();
+					if (cameraJson.contains("transition")) cameraCue.transition = cameraJson["transition"].get<double>();
 					cue.shots.push_back(cameraCue);
 				}
 			}
@@ -219,9 +220,9 @@ unnufm::Storyboard unnufm::ScriptParser::toStoryboard(const nlohmann::json& j) {
 
 std::set<std::string> unnufm::ScriptParser::getCreditedActorsInStoryboard(const Storyboard& storyboard) {
 	std::set<std::string> actors;
-	for (const Scene& scene : storyboard.scenes) {
-		for (const Cue& cue : scene.cues) {
-			for (const CueLine& line : cue.lines) {
+	for (const scene_t& scene : storyboard.scenes) {
+		for (const cue_t& cue : scene.cues) {
+			for (const cue_line_t& line : cue.lines) {
 				if (!line.speaker.empty() && !line.text.empty()) actors.insert(line.speaker);
 			}
 		}
@@ -229,54 +230,123 @@ std::set<std::string> unnufm::ScriptParser::getCreditedActorsInStoryboard(const 
 	return actors;
 }
 
-std::set<std::string> unnufm::ScriptParser::getCreditedActorsInScene(const Scene& scene) {
+unnufm::audio_t unnufm::PiperTTS::speak(const cue_line_t& line) {
+	audio_t audio;
+	audio.text = line.text;
+	auto& speaker = getVoice(line.speaker);
+	if (speaker.first >= 0) {
+		if (!line.text.empty()) {
+			ut_audio_sample_t* result = unnu_tts(speaker.first, line.emotion, speaker.second, line.text.c_str());
+			if (result->num_samples > 0) {
+				audio.chunk.sample_rate = result->sample_rate;
+				audio.chunk.samples = std::vector<float>(result->samples, result->samples + result->num_samples);
+			}
+			ut_audio_sample_free(result);
+		}
+	}
+	return audio;
+}
+
+void unnufm::PiperTTS::setVoice(const std::string& speaker, int32_t speaker_id, bool is_robot) {
+	voices[speaker] = std::make_pair(speaker_id, is_robot);
+}
+
+std::pair<int32_t, bool> unnufm::PiperTTS::getVoice(const std::string& speaker) const {
+	auto it = voices.find(speaker);
+	if (it != voices.end()) return it->second;
+	return std::make_pair(-1, false);
+}
+
+bool unnufm::SkitGrabber::grab(skit_t& skit) {
+	return skits.try_dequeue(skit);
+}
+
+std::set<std::string> unnufm::ScriptParser::getCreditedActorsInScene(const scene_t& scene) {
 	std::set<std::string> actors;
-	for (const Cue& cue : scene.cues) {
-		for (const CueLine& line : cue.lines) {
+	for (const cue_t& cue : scene.cues) {
+		for (const cue_line_t& line : cue.lines) {
 			if (!line.speaker.empty() && !line.text.empty()) actors.insert(line.speaker);
 		}
 	}
 	return actors;
 }
 
-unnufm::Performance unnufm::ProductionWrangler::toPerformance(const CueLine& line) {
-	Performance placeholder;
+unnufm::ProductionWrangler::ProductionWrangler(PiperTTS& actors, const std::string& script) : tts(actors) {
+	load(script);
+}
+
+void unnufm::ProductionWrangler::load(const std::string& script) {
+	nlohmann::json j = nlohmann::json::parse(script);
+
+	storyboard = ScriptParser::toStoryboard(j);
+	for (const scene_t& scene : storyboard.scenes) {
+		scenes[scene.sceneID] = scene;
+	}
+}
+
+std::string unnufm::ProductionWrangler::play(std::string sceneId) {
+	auto it = scenes.find(sceneId);
+	if (it == scenes.end()) {
+		return "";
+	}
+	scene_t& scene = it->second;
+	perform(scene);
+	return scene.jump;
+}
+
+unnufm::performance_t unnufm::ProductionWrangler::toPerformance(const cue_line_t& line) {
+	performance_t placeholder;
 	placeholder.line = line;
 	placeholder.audio = tts.speak(line);
 	return placeholder;
 }
 		
-unnufm::Take unnufm::ProductionWrangler::toTake(const Cue& cue) {
-	Take take;
+unnufm::take_t unnufm::ProductionWrangler::toTake(const cue_t& cue) {
+	take_t take;
 	take.timing = cue.timing;
 	take.stagger = cue.stagger;
 	take.dynamic = cue.dynamic;
 	take.sounds = cue.sounds;
 	take.shots = cue.shots;
-	for(const CueLine& line :  cue.lines) {
-		Performance p = toPerformance(line);
+	for(const cue_line_t& line :  cue.lines) {
+		performance_t p = toPerformance(line);
 		take.performances.push_back(std::move(p));
 	}
 	return take;
 }
 
-unnufm::Skit unnufm::ProductionWrangler::toSkit(const Scene& scene) {
-	Skit skit;
+unnufm::skit_t unnufm::ProductionWrangler::toSkit(const scene_t& scene) {
+	skit_t skit;
 	skit.sceneID = scene.sceneID;
-	for(const Cue& cue : scene.cues) {
-		Take t = toTake(cue);
+	skit.location = scene.location;
+	skit.stage = scene.stage;
+	for(const cue_t& cue : scene.cues) {
+		take_t t = toTake(cue);
 		skit.takes.push_back(std::move(t));
 	}
 	return skit;
 }
 
-void unnufm::ProductionWrangler::perform(const Scene& scene) {
-	Skit s = toSkit(scene);
+void unnufm::ProductionWrangler::perform(const scene_t& scene) {
+	skit_t s = toSkit(scene);
 	SendSkitToUnrealEngine(s);
 }
 
-void unnufm::ProductionWrangler::SendSkitToUnrealEngine(const Skit& skit) {
+void unnufm::ProductionWrangler::SendSkitToUnrealEngine(const skit_t& skit) {
 	skits.enqueue(skit);
+}
+
+void unnufm::SceneManager::LoadStoryboard(const std::string& script) {
+	wrangler.load(script);
+}
+
+void unnufm::SceneManager::run(const std::string& startScene) {
+	std::string currentScene = startScene;
+
+	while (!currentScene.empty()) {
+		// go to next scene
+		currentScene = wrangler.play(currentScene);
+	}
 }
 
 void unnu_fm_process_script(const char* script) {
@@ -312,7 +382,7 @@ void unnu_fm_process_script(const char* script) {
 		}
 	}
 	unnufm::ProductionWrangler wrangler(tts, story);
-	for(const unnufm::Scene& scene : story.scenes) {
+	for(const unnufm::scene_t& scene : story.scenes) {
 		wrangler.perform(scene);
 	}
 	
@@ -324,6 +394,4 @@ void unnu_fm_process_script(const char* script) {
 	th.detach();
 }
 
-bool unnufm::SkitGrabber::grab(Skit& skit) {
-	return skits.try_dequeue(skit);
-}
+
