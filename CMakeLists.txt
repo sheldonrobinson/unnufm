@@ -53,6 +53,7 @@ if(MSVC)
   set(cmd_wrapper ${Vcvars_LAUNCHER})
 endif()
 
+if(NOT TARGET unnutts)
 ################## unnutts
 FetchContent_Declare(
   unnutts
@@ -73,8 +74,9 @@ FetchContent_MakeAvailable(unnutts)
 file(REAL_PATH ${unnutts_SOURCE_DIR} UNNUTTS_SOURCE_DIR)
 
 set(UNNUTTS_INCLUDE_DIR "${UNNUTTS_SOURCE_DIR}/include" "unnutts include dir" FORCE)
+endif()
 
-if(NOT TARGET nlohmann_json::nlohmann_json)
+if(NOT TARGET nlohmann_json)
 	################## nlohmann
 	FetchContent_Declare(
 	  ufnlohmann_json
@@ -104,18 +106,12 @@ if(NOT TARGET nlohmann_json::nlohmann_json)
 
 	set(NLOHMANN_JSON_INCLUDE_DIR "${NLOHMANN_JSON_SOURCE_DIR}/single_include" "nholmann json include dir" FORCE)
 
-	if(NOT TARGET nlohmann::json)
-		add_library(nlohmann::json INTERFACE IMPORTED)
-		set_target_properties(nlohmann::json PROPERTIES
-							  INTERFACE_LINK_LIBRARIES nlohmann_json 							  
-							  INTERFACE_POSITION_INDEPENDENT_CODE ON
-							  )
-	endif()
 endif()
 
+if(NOT TARGET concurrentqueue)
 ################## concurrentqueue
 FetchContent_Declare(
-  ufconcurrentqueue
+  unnufm_concurrentqueue
   GIT_REPOSITORY 		 https://github.com/cameron314/concurrentqueue.git
   GIT_TAG        		 origin/master
   GIT_SHALLOW 			 TRUE
@@ -124,24 +120,13 @@ FetchContent_Declare(
   OVERRIDE_FIND_PACKAGE
 )
 
-FetchContent_MakeAvailable(ufconcurrentqueue)
+FetchContent_MakeAvailable(unnufm_concurrentqueue)
 
-file(REAL_PATH ${ufconcurrentqueue_SOURCE_DIR} CONCURRENTQUEUE_SOURCE_DIR)
+file(REAL_PATH ${unnufm_concurrentqueue_SOURCE_DIR} CONCURRENTQUEUE_SOURCE_DIR)
 
 set(CONCURRENTQUEUE_INCLUDE_DIR "${CONCURRENTQUEUE_SOURCE_DIR}" "concurrentqueue include dir" FORCE)
 
-if(NOT TARGET moodycamel::concurrentqueue)
-	add_library(moodycamel::concurrentqueue INTERFACE IMPORTED)
-    set_target_properties(moodycamel::concurrentqueue PROPERTIES
-                          INTERFACE_LINK_LIBRARIES concurrentqueue  							  
-						  INTERFACE_POSITION_INDEPENDENT_CODE ON
-						  )
 endif()
-
-
-
-include_directories(${NLOHMANN_JSON_INCLUDE_DIR} ${UNNUTTS_INCLUDE_DIR} ${CONCURRENTQUEUE_SOURCE_DIR} ${LIBPIPER_INCLUDE_DIR})
-
 
 if (UF_BUILD_SHARED_LIBS)
 	add_library(unnufm SHARED src/unnufm.cpp)
@@ -149,7 +134,9 @@ else()
 	add_library(unnufm STATIC src/unnufm.cpp)
 endif()
 
-target_link_libraries(unnufm PUBLIC piper unnutts concurrentqueue nlohmann_json nlohmann_json::nlohmann_json)
+target_link_libraries(unnufm PUBLIC piper unnutts concurrentqueue nlohmann_json)
+
+target_include_directories(unnufm PUBLIC include PRIVATE ${NLOHMANN_JSON_INCLUDE_DIR} ${UNNUTTS_INCLUDE_DIR} ${CONCURRENTQUEUE_SOURCE_DIR} ${LIBPIPER_INCLUDE_DIR})
 
 
 set_target_properties(unnufm PROPERTIES
@@ -159,7 +146,6 @@ set_target_properties(unnufm PROPERTIES
   POSITION_INDEPENDENT_CODE True
 )
 
-target_include_directories(unnufm PUBLIC include)
 target_compile_features   (unnufm PRIVATE cxx_std_17) # don't bump
 
 if (UF_BUILD_SHARED_LIBS)
