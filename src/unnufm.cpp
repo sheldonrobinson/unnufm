@@ -230,6 +230,37 @@ std::set<std::string> unnufm::ScriptParser::getCreditedActorsInStoryboard(const 
 	return actors;
 }
 
+static std::set<std::string> unnufm::ScriptParser::getActorsInSkit(const skit_t& skit)
+{
+	std::set<std::string> actors;
+	for (const take_t& take : skit.takes) {
+		for (const performance_t& performance : take.performances) {
+			if (!performance.line.speaker.empty()) actors.insert(performance.line.speaker);
+		}
+	}
+	return actors;
+}
+
+static std::set<std::string>  unnufm::ScriptParser::getCreditedActorsInTake(const take_t& take)
+{
+	std::set<std::string> actors;
+	for (const performance_t& performance : take.performances)
+	{
+			if (!performance.line.speaker.empty() && !performance.chunk.samples.empty()) actors.insert(performance.line.speaker);
+	}
+	return actors;
+}
+
+std::set<std::string> unnufm::ScriptParser::getCreditedActorsInScene(const scene_t& scene) {
+	std::set<std::string> actors;
+	for (const cue_t& cue : scene.cues) {
+		for (const cue_line_t& line : cue.lines) {
+			if (!line.speaker.empty() && !line.text.empty()) actors.insert(line.speaker);
+		}
+	}
+	return actors;
+}
+
 unnufm::audio_t unnufm::PiperTTS::speak(const cue_line_t& line) {
 	audio_t audio;
 	audio.text = line.text;
@@ -261,15 +292,7 @@ bool unnufm::SkitGrabber::grab(skit_t& skit) {
 	return skits.try_dequeue(skit);
 }
 
-std::set<std::string> unnufm::ScriptParser::getCreditedActorsInScene(const scene_t& scene) {
-	std::set<std::string> actors;
-	for (const cue_t& cue : scene.cues) {
-		for (const cue_line_t& line : cue.lines) {
-			if (!line.speaker.empty() && !line.text.empty()) actors.insert(line.speaker);
-		}
-	}
-	return actors;
-}
+
 
 unnufm::ProductionWrangler::ProductionWrangler(PiperTTS& actors, const std::string& script) : tts(actors) {
 	load(script);

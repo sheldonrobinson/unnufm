@@ -330,8 +330,6 @@ namespace unnufm {
 	
 	// ---------------- Storyboard Class ----------------
 	class Storyboard {
-	private:
-		
 
 	public:
 		std::vector<scene_t> scenes;
@@ -380,7 +378,9 @@ namespace unnufm {
 
 		static Storyboard toStoryboard(const nlohmann::json& j);
 		static std::set<std::string> getCreditedActorsInStoryboard(const Storyboard& storyboard);
+		static std::set<std::string> getActorsInSkit(const skit_t& skit);
 		static std::set<std::string> getCreditedActorsInScene(const scene_t& scene);
+		static std::set<std::string> getCreditedActorsInTake(const take_t& take);
 	};
 
 
