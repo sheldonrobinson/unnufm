@@ -230,7 +230,7 @@ std::set<std::string> unnufm::ScriptParser::getCreditedActorsInStoryboard(const 
 	return actors;
 }
 
-static std::set<std::string> unnufm::ScriptParser::getActorsInSkit(const skit_t& skit)
+std::set<std::string> unnufm::ScriptParser::getActorsInSkit(const skit_t& skit)
 {
 	std::set<std::string> actors;
 	for (const take_t& take : skit.takes) {
@@ -241,12 +241,12 @@ static std::set<std::string> unnufm::ScriptParser::getActorsInSkit(const skit_t&
 	return actors;
 }
 
-static std::set<std::string>  unnufm::ScriptParser::getCreditedActorsInTake(const take_t& take)
+std::set<std::string>  unnufm::ScriptParser::getCreditedActorsInTake(const take_t& take)
 {
 	std::set<std::string> actors;
 	for (const performance_t& performance : take.performances)
 	{
-			if (!performance.line.speaker.empty() && !performance.chunk.samples.empty()) actors.insert(performance.line.speaker);
+			if (!performance.line.speaker.empty() && !performance.audio.chunk.samples.empty()) actors.insert(performance.line.speaker);
 	}
 	return actors;
 }
