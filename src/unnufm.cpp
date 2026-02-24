@@ -3,6 +3,9 @@
 #include <concurrentqueue.h>
 #include <nlohmann/json.hpp>
 #include <unnu_tts/cxx-api.h>
+#include <locale.h>
+#include <cctype> // for std::tolower
+#include <algorithm>
 #include "unnu_fm/cxx-api.h"
 
 static moodycamel::ConcurrentQueue<unnufm::Storyboard> scenequeue;
@@ -372,6 +375,48 @@ void unnufm::SceneManager::run(const std::string& startScene) {
 	}
 }
 
+bool starts_with(const std::string& str, const std::string& prefix) {
+    return str.size() >= prefix.size() &&
+           str.compare(0, prefix.size(), prefix) == 0;
+}
+
+// Case-insensitive starts_with
+bool starts_with_ci(const std::string& str, const std::string& prefix) {
+    if (prefix.size() > str.size()) return false;
+
+    for (size_t i = 0; i < prefix.size(); ++i) {
+        if (std::tolower(static_cast<unsigned char>(str[i])) !=
+            std::tolower(static_cast<unsigned char>(prefix[i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Returns true if strings are equal ignoring case
+bool equals_ignore_case(const std::string& a, const std::string& b) {
+    if (a.size() != b.size()) return false;
+
+    for (size_t i = 0; i < a.size(); ++i) {
+        if (std::tolower(static_cast<unsigned char>(a[i])) !=
+            std::tolower(static_cast<unsigned char>(b[i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::string to_lower_case(const std::string& str) {
+	std::string result = str;
+	std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) {
+	return std::tolower(c);
+	});
+	return result;
+}
+
+static std::string g_unnu_fm_male_string("male");
+static std::string g_unnu_fm_female_string("female");
+
 void unnu_fm_process_script(const char* script) {
 	std::string script_str(script);
 	
@@ -384,19 +429,59 @@ void unnu_fm_process_script(const char* script) {
 	unnufm::PiperTTS tts;
 	for(const auto& speaker : speakers) {
 		if (speaker.empty()) continue;
-		int id = -1;
-		if (speaker == "Ava" || speaker == "Quinn") {
-			id = ut_get_speaker_id("female"); // ensure speaker is loaded in TTS
-		} else if (speaker == "Tar" || speaker == "Manny") {
-			id = ut_get_speaker_id("male"); // ensure speaker is loaded in TTS
+		std::string lookup = to_lower_case(speaker);
+		int id = ut_get_speaker_id(lookup.c_str());
+		if(id < 0){
+			const char *locale_str = setlocale(LC_ALL, "");
+			int genderCode = 0;
+			if (lookup == "ava" || lookup == "quinn") {
+				genderCode = 1; // ensure speaker is loaded in TTS
+			} else if (lookup == "tar" || lookup == "manny") {
+				genderCode = 2; // ensure speaker is loaded in TTS
+			}
+			if (locale_str) 
+			{
+				std::string langcode(locale, 2);
+				std::string lang_2ch(locale, 2);	
+				std::string locale_code = langcode + "-" + std::string(locale+3,2);
+				
+
+				if(genderCode == 2 || starts_with_ci(speaker, g_unnu_fm_male_string))
+				{
+					std::string maleVoce = std::string("male.") + locale_code;
+					id = ut_get_speaker_id(maleVoce);
+					if(id < 0)
+					{
+						maleVoce = g_unnu_fm_male_string + "." + langcode;
+						id = ut_get_speaker_id(maleVoce);
+						if(id < 0)
+						{
+							id = ut_get_speaker_id(g_unnu_fm_male_string);
+						}
+						
+					}
+				} else if(genderCode == 1 || speaker.starts_with_ci(speaker, g_unnu_fm_female_string)){
+					std::string femaleVoce = std::string("female.") + locale_code;
+					id = ut_get_speaker_id(femaleVoce);
+					if(id < 0)
+					{
+						femaleVoce = g_unnu_fm_female_string + "." + langcode;
+						id = ut_get_speaker_id(femaleVoce);
+						if(id < 0)
+						{
+							id = ut_get_speaker_id(g_unnu_fm_female_string);
+						}
+						
+					}
+				}
+			}
 		}
-		if (id < 0) {
-			id = ut_get_speaker_id(speaker.c_str());
-		}
+		
+		
 
 		if (id >= 0) {
 			// For demonstration, assign robot voices to Manny and Quinn
-			if (speaker == "Manny" || speaker == "Quinn") {
+			if (lookup == "manny" || lookup == "quinn") {
 				tts.setVoice(speaker, id, true);
 			}
 			else {
