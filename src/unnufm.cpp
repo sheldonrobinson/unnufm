@@ -441,35 +441,32 @@ void unnu_fm_process_script(const char* script) {
 			}
 			if (locale_str) 
 			{
-				std::string langcode(locale, 2);
-				std::string lang_2ch(locale, 2);	
-				std::string locale_code = langcode + "-" + std::string(locale+3,2);
-				
-
+				std::string langcode(locale_str, 2);
+				std::string locale_code = langcode + "-" + std::string(locale_str + 3,2);
 				if(genderCode == 2 || starts_with_ci(speaker, g_unnu_fm_male_string))
 				{
 					std::string maleVoce = std::string("male.") + locale_code;
-					id = ut_get_speaker_id(maleVoce);
+					id = ut_get_speaker_id(maleVoce.c_str());
 					if(id < 0)
 					{
 						maleVoce = g_unnu_fm_male_string + "." + langcode;
-						id = ut_get_speaker_id(maleVoce);
+						id = ut_get_speaker_id(maleVoce.c_str());
 						if(id < 0)
 						{
-							id = ut_get_speaker_id(g_unnu_fm_male_string);
+							id = ut_get_speaker_id(g_unnu_fm_male_string.c_str());
 						}
 						
 					}
-				} else if(genderCode == 1 || speaker.starts_with_ci(speaker, g_unnu_fm_female_string)){
+				} else if(genderCode == 1 || starts_with_ci(speaker, g_unnu_fm_female_string)){
 					std::string femaleVoce = std::string("female.") + locale_code;
-					id = ut_get_speaker_id(femaleVoce);
+					id = ut_get_speaker_id(femaleVoce.c_str());
 					if(id < 0)
 					{
 						femaleVoce = g_unnu_fm_female_string + "." + langcode;
-						id = ut_get_speaker_id(femaleVoce);
+						id = ut_get_speaker_id(femaleVoce.c_str());
 						if(id < 0)
 						{
-							id = ut_get_speaker_id(g_unnu_fm_female_string);
+							id = ut_get_speaker_id(g_unnu_fm_female_string.c_str());
 						}
 						
 					}
