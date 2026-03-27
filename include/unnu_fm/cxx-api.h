@@ -2,6 +2,8 @@
 
 #include "c-api.h"
 #include <set>
+#include <map>
+#include <memory>
 #include <nlohmann/json.hpp>
 
 namespace unnufm {
@@ -11,29 +13,29 @@ namespace unnufm {
 	// =====================
 	
 	
-	static unnu_motion_t unnu_motion_from_string(const std::string & type_str) {
+	static unnufm_motion_t unnufm_motion_from_string(const std::string & type_str) {
 		if (type_str == "stand") {
-			return unnu_motion::MOTION_STAND;
+			return unnufm_motion::MOTION_STAND;
 		}
 		if (type_str == "sit") {
-			return unnu_motion::MOTION_SIT;
+			return unnufm_motion::MOTION_SIT;
 		}
 		if (type_str == "lie") {
-			return unnu_motion::MOTION_LIE;
+			return unnufm_motion::MOTION_LIE;
 		}
 		if (type_str == "walk") {
-			return unnu_motion::MOTION_WALK;
+			return unnufm_motion::MOTION_WALK;
 		}
 		if (type_str == "jog") {
-			return unnu_motion::MOTION_JOG;
+			return unnufm_motion::MOTION_JOG;
 		}
 		if (type_str == "run") {
-			return unnu_motion::MOTION_RUN;
+			return unnufm_motion::MOTION_RUN;
 		}
-		return unnu_motion::MOTION_NONE;
+		return unnufm_motion::MOTION_NONE;
 	}
 
-	static std::string unnu_motion_to_string(unnu_motion type) {
+	static std::string unnufm_motion_to_string(unnufm_motion type) {
 		switch (type) {
 			case MOTION_NONE: return "";
 			case MOTION_STAND: return "stand";
@@ -47,20 +49,20 @@ namespace unnufm {
 	}
 	
 
-	static unnu_scene_timing unnu_scene_timing_from_string(const std::string & type_str) {
+	static unnufm_scene_timing unnufm_scene_timing_from_string(const std::string & type_str) {
 		if (type_str == "sequential") {
-			return unnu_scene_timing::TIMING_SEQUENTIAL;
+			return unnufm_scene_timing::TIMING_SEQUENTIAL;
 		}
 		if (type_str == "simultaneous") {
-			return unnu_scene_timing::TIMING_SIMULTANEOUS;
+			return unnufm_scene_timing::TIMING_SIMULTANEOUS;
 		}
 		if (type_str == "overlap") {
-			return unnu_scene_timing::TIMING_OVERLAP;
+			return unnufm_scene_timing::TIMING_OVERLAP;
 		}
-		return unnu_scene_timing::TIMING_SEQUENTIAL;
+		return unnufm_scene_timing::TIMING_SEQUENTIAL;
 	}
 
-	static std::string unnu_scene_timing_to_string(unnu_scene_timing type) {
+	static std::string unnufm_scene_timing_to_string(unnufm_scene_timing type) {
 		switch (type) {
 			case TIMING_SEQUENTIAL: return "sequential";
 			case TIMING_SIMULTANEOUS: return "simultaneous";
@@ -69,23 +71,23 @@ namespace unnufm {
 		}
 	}
 	
-	static unnu_sound_cue_type sound_cue_type_from_string(const std::string & type_str) {
+	static unnufm_sound_cue_type sound_cue_type_from_string(const std::string & type_str) {
 		if (type_str == "sfx") {
-			return unnu_sound_cue_type::SOUND_SFX;
+			return unnufm_sound_cue_type::SOUND_SFX;
 		}
 		if (type_str == "music") {
-			return unnu_sound_cue_type::SOUND_MUSIC;
+			return unnufm_sound_cue_type::SOUND_MUSIC;
 		}
 		if (type_str == "ambient") {
-			return unnu_sound_cue_type::SOUND_AMBIENT;
+			return unnufm_sound_cue_type::SOUND_AMBIENT;
 		}
 		if (type_str == "default") {
-			return unnu_sound_cue_type::SOUND_DEFAULT;
+			return unnufm_sound_cue_type::SOUND_DEFAULT;
 		}
-		return unnu_sound_cue_type::SOUND_DEFAULT;
+		return unnufm_sound_cue_type::SOUND_DEFAULT;
 	}
 
-	static std::string sound_cue_type_to_string(unnu_sound_cue_type type) {
+	static std::string sound_cue_type_to_string(unnufm_sound_cue_type type) {
 		switch (type) {
 			case SOUND_SFX: return "sfx";
 			case SOUND_MUSIC: return "music";
@@ -96,41 +98,41 @@ namespace unnufm {
 	}
 
 
-	static unnu_camera_shot_size camera_shot_size_from_string(const std::string & size_str) {
+	static unnufm_camera_shot_size camera_shot_size_from_string(const std::string & size_str) {
 		if (size_str == "default") {
-			return unnu_camera_shot_size::CAMERA_SIZE_DEFAULT;
+			return unnufm_camera_shot_size::CAMERA_SIZE_DEFAULT;
 		}
 		if (size_str == "medium") {
-			return unnu_camera_shot_size::CAMERA_SIZE_MEDIUM;
+			return unnufm_camera_shot_size::CAMERA_SIZE_MEDIUM;
 		}
 		if (size_str == "full") {
-			return unnu_camera_shot_size::CAMERA_SIZE_FULL;
+			return unnufm_camera_shot_size::CAMERA_SIZE_FULL;
 		}
 		if (size_str == "close_up") {
-			return unnu_camera_shot_size::CAMERA_SIZE_CLOSE_UP;
+			return unnufm_camera_shot_size::CAMERA_SIZE_CLOSE_UP;
 		}
 		if (size_str == "wide") {
-			return unnu_camera_shot_size::CAMERA_SIZE_WIDE;
+			return unnufm_camera_shot_size::CAMERA_SIZE_WIDE;
 		}
 		if (size_str == "cowboy") {
-			return unnu_camera_shot_size::CAMERA_SIZE_COWBOY;
+			return unnufm_camera_shot_size::CAMERA_SIZE_COWBOY;
 		}
 		if (size_str == "medium_wide") {
-			return unnu_camera_shot_size::CAMERA_SIZE_MEDIUM_WIDE;
+			return unnufm_camera_shot_size::CAMERA_SIZE_MEDIUM_WIDE;
 		}
 		if (size_str == "medium_close_up") {
-			return unnu_camera_shot_size::CAMERA_SIZE_MEDIUM_CLOSE_UP;
+			return unnufm_camera_shot_size::CAMERA_SIZE_MEDIUM_CLOSE_UP;
 		}
 		if (size_str == "extreme_close_up") {
-			return unnu_camera_shot_size::CAMERA_SIZE_EXTREME_CLOSE_UP;
+			return unnufm_camera_shot_size::CAMERA_SIZE_EXTREME_CLOSE_UP;
 		}
 		if (size_str == "extreme_wide") {
-			return unnu_camera_shot_size::CAMERA_SIZE_EXTREME_WIDE;
+			return unnufm_camera_shot_size::CAMERA_SIZE_EXTREME_WIDE;
 		}
-		return unnu_camera_shot_size::CAMERA_SIZE_DEFAULT;
+		return unnufm_camera_shot_size::CAMERA_SIZE_DEFAULT;
 	}
 
-	static std::string camera_shot_size_to_string(unnu_camera_shot_size type) {
+	static std::string camera_shot_size_to_string(unnufm_camera_shot_size type) {
 		switch (type) {
 			case CAMERA_SIZE_DEFAULT: return "default";
 			case CAMERA_SIZE_MEDIUM: return "medium";
@@ -146,38 +148,38 @@ namespace unnufm {
 		}
 	}
 
-	static unnu_camera_shot_angle camera_shot_angle_from_string(const std::string & angle_str) {
+	static unnufm_camera_shot_angle camera_shot_angle_from_string(const std::string & angle_str) {
 		if (angle_str == "default") {
-			return unnu_camera_shot_angle::CAMERA_ANGLE_DEFAULT;
+			return unnufm_camera_shot_angle::CAMERA_ANGLE_DEFAULT;
 		}
 		if (angle_str == "eye_level") {
-			return unnu_camera_shot_angle::CAMERA_ANGLE_EYE_LEVEL;
+			return unnufm_camera_shot_angle::CAMERA_ANGLE_EYE_LEVEL;
 		}
 		if (angle_str == "shoulder_level") {
-			return unnu_camera_shot_angle::CAMERA_ANGLE_SHOULDER_LEVEL;
+			return unnufm_camera_shot_angle::CAMERA_ANGLE_SHOULDER_LEVEL;
 		}
 		if (angle_str == "hip_level") {
-			return unnu_camera_shot_angle::CAMERA_ANGLE_HIP_LEVEL;
+			return unnufm_camera_shot_angle::CAMERA_ANGLE_HIP_LEVEL;
 		}
 		if (angle_str == "knee_level") {
-			return unnu_camera_shot_angle::CAMERA_ANGLE_KNEE_LEVEL;
+			return unnufm_camera_shot_angle::CAMERA_ANGLE_KNEE_LEVEL;
 		}
 		if (angle_str == "ground_level") {
-			return unnu_camera_shot_angle::CAMERA_ANGLE_GROUND_LEVEL;
+			return unnufm_camera_shot_angle::CAMERA_ANGLE_GROUND_LEVEL;
 		}
 		if (angle_str == "low") {
-			return unnu_camera_shot_angle::CAMERA_ANGLE_LOW;
+			return unnufm_camera_shot_angle::CAMERA_ANGLE_LOW;
 		}
 		if (angle_str == "high") {
-			return unnu_camera_shot_angle::CAMERA_ANGLE_HIGH;
+			return unnufm_camera_shot_angle::CAMERA_ANGLE_HIGH;
 		}
 		if (angle_str == "overhead") {
-			return unnu_camera_shot_angle::CAMERA_ANGLE_OVERHEAD;
+			return unnufm_camera_shot_angle::CAMERA_ANGLE_OVERHEAD;
 		}
-		return unnu_camera_shot_angle::CAMERA_ANGLE_DEFAULT;
+		return unnufm_camera_shot_angle::CAMERA_ANGLE_DEFAULT;
 	}
 
-	static std::string camera_shot_angle_to_string(unnu_camera_shot_angle type) {
+	static std::string camera_shot_angle_to_string(unnufm_camera_shot_angle type) {
 		switch (type) {
 			case CAMERA_ANGLE_DEFAULT: return "default";
 			case CAMERA_ANGLE_EYE_LEVEL: return "eye_level";
@@ -192,44 +194,44 @@ namespace unnufm {
 		}
 	}
 
-	static unnu_camera_shot_movement camera_shot_movement_from_string(const std::string & move_str) {
+	static unnufm_camera_shot_movement camera_shot_movement_from_string(const std::string & move_str) {
 		if (move_str == "fixed") {
-			return unnu_camera_shot_movement::CAMERA_MOVEMENT_FIXED;
+			return unnufm_camera_shot_movement::CAMERA_MOVEMENT_FIXED;
 		}
 		if (move_str == "pan_left") {
-			return unnu_camera_shot_movement::CAMERA_MOVEMENT_PAN_LEFT;
+			return unnufm_camera_shot_movement::CAMERA_MOVEMENT_PAN_LEFT;
 		}
 		if (move_str == "pan_right") {
-			return unnu_camera_shot_movement::CAMERA_MOVEMENT_PAN_RIGHT;
+			return unnufm_camera_shot_movement::CAMERA_MOVEMENT_PAN_RIGHT;
 		}
 		if (move_str == "tilt_up") {
-			return unnu_camera_shot_movement::CAMERA_MOVEMENT_TILT_UP;
+			return unnufm_camera_shot_movement::CAMERA_MOVEMENT_TILT_UP;
 		}
 		if (move_str == "tilt_down") {
-			return unnu_camera_shot_movement::CAMERA_MOVEMENT_TILT_DOWN;
+			return unnufm_camera_shot_movement::CAMERA_MOVEMENT_TILT_DOWN;
 		}
 		if (move_str == "push_in") {
-			return unnu_camera_shot_movement::CAMERA_MOVEMENT_PUSH_IN;
+			return unnufm_camera_shot_movement::CAMERA_MOVEMENT_PUSH_IN;
 		}
 		if (move_str == "pull_out") {
-			return unnu_camera_shot_movement::CAMERA_MOVEMENT_PULL_OUT;
+			return unnufm_camera_shot_movement::CAMERA_MOVEMENT_PULL_OUT;
 		}
 		if (move_str == "zoom_in") {
-			return unnu_camera_shot_movement::CAMERA_MOVEMENT_ZOOM_IN;
+			return unnufm_camera_shot_movement::CAMERA_MOVEMENT_ZOOM_IN;
 		}
 		if (move_str == "zoom_out") {
-			return unnu_camera_shot_movement::CAMERA_MOVEMENT_ZOOM_OUT;
+			return unnufm_camera_shot_movement::CAMERA_MOVEMENT_ZOOM_OUT;
 		}
 		if (move_str == "tracking") {
-			return unnu_camera_shot_movement::CAMERA_MOVEMENT_TRACKING;
+			return unnufm_camera_shot_movement::CAMERA_MOVEMENT_TRACKING;
 		}
 		if (move_str == "trucking") {
-			return unnu_camera_shot_movement::CAMERA_MOVEMENT_TRUCKING;
+			return unnufm_camera_shot_movement::CAMERA_MOVEMENT_TRUCKING;
 		}
-		return unnu_camera_shot_movement::CAMERA_MOVEMENT_FIXED;
+		return unnufm_camera_shot_movement::CAMERA_MOVEMENT_FIXED;
 	}
 
-	static std::string camera_shot_movement_to_string(unnu_camera_shot_movement type) {
+	static std::string camera_shot_movement_to_string(unnufm_camera_shot_movement type) {
 		switch (type) {
 			case CAMERA_MOVEMENT_FIXED: return "fixed";
 			case CAMERA_MOVEMENT_PAN_LEFT: return "pan_left";
@@ -245,98 +247,275 @@ namespace unnufm {
 			default:  return "fixed";
 		}
 	}
-
-	typedef struct SoundCue {
-		unnu_sound_cue_type type; // "music", "sfx", "ambient"
-		std::string uri;
-		double time = 0.0;
-	} sound_cue_t;
-
-	typedef struct CameraCue {
-		unnu_camera_shot_size size = unnu_camera_shot_size::CAMERA_SIZE_DEFAULT;
-		unnu_camera_shot_angle angle = unnu_camera_shot_angle::CAMERA_ANGLE_DEFAULT;
-		unnu_camera_shot_movement movement = unnu_camera_shot_movement::CAMERA_MOVEMENT_FIXED;
-		std::string target;
-		double duration = 0.0;
-		double transition = 0.0;
-	} camera_cue_t;
-
-	typedef struct Action {
-		unnu_motion_t motion;
-		std::string gesture;
-		std::string target;
-		double delay = 0.0;
-		bool persistent = false;
-	} action_t;
-
-	typedef struct CueLine {
-		std::string speaker;
-		std::string text;
-		double pause = 0.0;
-		double delay = 0.0;
-		std::vector<action_t> actions;
-		EEMOTION emotion = EEMOTION::EMOTION_NEUTRAL;
-		bool lipSync = true;
-	} cue_line_t;
 	
-	typedef struct AudioChunk{
-		std::vector<float> samples;
-		int sample_rate;
-	} audio_chunk_t;
+	typedef struct unnufm_speaker_ref_deleter {
+		void operator()(unnufm_speaker_ref_t* speaker) const {
+			if (speaker) {
+				if (speaker->speaker) { free(speaker->speaker); speaker->speaker = NULL; }
+				free(speaker);
+			}
+		}
+	};
 
-	typedef struct Audio {
-		audio_chunk_t chunk;
-		std::string text;
-	} audio_t;
-	
-	typedef struct Performance {
-		audio_t audio;
-		cue_line_t line;
-	} performance_t;
+	typedef std::unique_ptr<unnufm_speaker_ref_t, unnufm_speaker_ref_deleter> unnufm_speaker_ref_ptr;
 
-	typedef struct Cue {
-		unnu_scene_timing_t timing; // sequential, simultaneous, overlap, branch
-		double stagger = 0.7; // NEW: default stagger for overlap
-		bool dynamic = false; // NEW: allow real-time modification
-		std::vector<cue_line_t> lines;
-		std::vector<sound_cue_t> sounds;
-		std::vector<camera_cue_t> shots;
-	} cue_t;
-	
-	typedef struct Take {
-		unnu_scene_timing_t timing; // sequential, simultaneous, overlap, branch
-		double stagger = 0.7; // NEW: default stagger for overlap
-		bool dynamic = false; // NEW: allow real-time modification
-		std::vector<performance_t> performances;
-		std::vector<sound_cue_t> sounds;
-		std::vector<camera_cue_t> shots;
-	} take_t;
+	typedef struct unnufm_speaker_list_deleter {
+		void operator()(unnufm_speaker_list_t* list) const {
+			if (list) {
+				if (list->n_speakers > 0 && list->speakers) {
+					for (int i = 0; i < list->n_speakers; i++) {
+						if (list->speakers[i]) unnufm_speaker_ref_ptr(list->speakers[i]).reset();
+					}
+					free(list->speakers); list->speakers = NULL;
+				}
+				free(list);
+			}
+		}
+	};
 
-	typedef struct Scene {
-		std::string sceneID;
-		std::string location;
-		std::string stage;
-		std::vector<cue_t> cues;
-		std::string jump;
-	} scene_t;
+	typedef std::unique_ptr<unnufm_speaker_list_t, unnufm_speaker_list_deleter> unnufm_speaker_list_ptr;
+
+	typedef struct sound_cue_deleter {
+		void operator()(unnufm_sound_cue_t* cue) const {
+			if (cue) {
+				if (cue->uri) { free(cue->uri); cue->uri = NULL; }
+				free(cue);
+			}
+		}
+	};
+
+	typedef std::unique_ptr<unnufm_sound_cue_t, sound_cue_deleter> sound_cue_ptr;
+
+	typedef struct camera_cue_deleter {
+		void operator()(unnufm_camera_cue_t* cue) const {
+			if (cue) {
+				if (cue->target) { free(cue->target); cue->target = NULL; }
+				delete cue;
+			}
+		}
+	};
+
+	typedef std::unique_ptr<unnufm_camera_cue_t, camera_cue_deleter> camera_cue_ptr;
+
 	
-	typedef struct Skit {
-		std::string sceneID;
-		std::string location;
-		std::string stage;
-		std::vector<take_t> takes;
-		std::string jump;
-	} skit_t;
+
+	typedef struct action_deleter {
+		void operator()(unnufm_action_t* action) const {
+			if (action) {
+				if (action->gesture) {
+					free(action->gesture); action->gesture = NULL;
+				}
+				if (action->target) { free(action->target); action->target = NULL; }
+				free(action);
+			}
+		}
+	};
+
+	typedef std::unique_ptr<unnufm_action_t, action_deleter> action_ptr;
+
+	
+
+	typedef struct cue_line_deleter {
+		void operator()(unnufm_cue_line_t* line) const {
+			if (line) {
+				if (line->speaker) {free(line->speaker); line->speaker = NULL; }
+				if (line->text) { free(line->text); line->text = NULL; }
+				if(line->n_actions > 0 && line->actions) {
+					for (int i = 0; i < line->n_actions; i++) {
+						if(line->actions[i]) action_ptr(line->actions[i]).reset();
+					}
+					free(line->actions); line->actions = NULL;
+				}
+				free(line);
+			}
+		}
+	};
+
+	typedef std::unique_ptr<unnufm_cue_line_t, cue_line_deleter> cue_line_ptr;
+	
+	typedef struct audio_chunk_deleter {
+		void operator()(unnufm_audio_chunk_t* chunk) const {
+			if (chunk) {
+				if (chunk->n_samples > 0 && chunk->samples) { free(chunk->samples); chunk->samples = NULL; }
+				free(chunk);
+			}
+		}
+	};
+
+	typedef std::unique_ptr<unnufm_audio_chunk_t, audio_chunk_deleter> audio_chunk_ptr;
+
+	
+
+	typedef struct audio_deleter {
+		void operator()(unnufm_audio_t* audio) const {
+			if (audio) {
+				if (audio->n_text > 0 && audio->text) { free(audio->text); audio->text = NULL; }
+				if (audio->chunk) audio_chunk_ptr(audio->chunk).reset();
+				delete audio;
+			}
+		}
+	};
+
+	typedef std::unique_ptr<unnufm_audio_t, audio_deleter> audio_ptr;
+
+	typedef struct performance_deleter {
+		void operator()(unnufm_performance_t* performance) const {
+			if (performance) {
+				if(performance->audio) audio_ptr(performance->audio).reset();
+				// if (performance->line) cue_line_ptr(performance->line).reset();
+				delete performance;
+			}
+		}
+	};
+
+	typedef std::unique_ptr<unnufm_performance_t, performance_deleter> performance_ptr;
+
+	typedef struct cue_deleter {
+		void operator()(unnufm_cue_t* cue) const {
+			if (cue) {
+				if(cue->n_lines > 0 && cue->lines) {
+					 for (int i = 0; i < cue->n_lines; i++) {
+						if(cue->lines[i]) cue_line_ptr(cue->lines[i]).reset();
+					}
+					free(cue->lines); cue->lines = NULL;
+				}
+				if(cue->n_sounds > 0 && cue->sounds) {
+					for (int i = 0; i < cue->n_sounds; i++) {
+						if(cue->sounds[i]) sound_cue_ptr(cue->sounds[i]).reset();
+					}
+					free(cue->sounds); cue->sounds = NULL;
+				}
+				if (cue->n_shots > 0 && cue->shots) {
+					for (int i = 0; i < cue->n_shots; i++) {
+						if(cue->shots[i]) camera_cue_ptr(cue->shots[i]).reset();
+					}
+					free(cue->shots); cue->shots = NULL;
+				}
+				free(cue);
+			}
+		}
+	};
+
+	typedef std::unique_ptr<unnufm_cue_t, cue_deleter> cue_ptr;
+	
+	
+
+	typedef struct take_deleter {
+		void operator()(unnufm_take_t* take) const {
+			if (take) {
+				if (take->n_performances > 0 && take->performances) {
+					for (int i = 0; i < take->n_performances; i++) {
+						if (take->performances[i]) performance_ptr(take->performances[i]).reset();
+					}
+					free(take->performances); take->performances = NULL;
+				}
+				if (take->n_sounds > 0 && take->sounds) {
+					for (int i = 0; i < take->n_sounds; i++) {
+						if (take->sounds[i]) sound_cue_ptr(take->sounds[i]).reset();
+					}
+					free(take->sounds); take->sounds = NULL;
+				}
+				if (take->n_shots > 0 && take->shots) {
+					for (int i = 0; i < take->n_shots; i++) {
+						if (take->shots[i]) camera_cue_ptr(take->shots[i]).reset();
+					}
+					free(take->shots); take->shots = NULL;
+				}
+				free(take);
+			}
+		}
+	};
+
+	typedef std::unique_ptr<unnufm_take_t, take_deleter> take_ptr;
+
+	typedef struct scene_deleter {
+		void operator()(unnufm_scene_t* scene) const {
+			if (scene) {
+				if (scene->n_sceneID > 0 && scene->sceneID) { free(scene->sceneID); scene->sceneID = NULL; }
+				if (scene->n_location > 0 && scene->location) { free(scene->location); scene->location = NULL; }
+				if (scene->n_stage > 0 && scene->stage) { free(scene->stage); scene->stage = NULL; }
+				if (scene->n_jump > 0 && scene->jump) { free(scene->jump); scene->jump = NULL; }
+				if(scene->n_cues > 0 && scene->cues) {
+					 for (int i = 0; i < scene->n_cues; i++) {
+						if(scene->cues[i]) cue_ptr(scene->cues[i]).reset();
+					}
+					free(scene->cues); scene->cues = NULL;
+				}
+				free(scene);
+			}
+		}
+	};
+
+	typedef std::unique_ptr<unnufm_scene_t, scene_deleter> scene_ptr;
+
+	
+
+	typedef struct skit_deleter {
+		void operator()(unnufm_skit_t* skit) const {
+			if (skit) {
+				if (skit->n_sceneID > 0 && skit->sceneID) { free(skit->sceneID); skit->sceneID = NULL; }
+				if (skit->n_location > 0 && skit->location) { free(skit->location); skit->location = NULL; }
+				if (skit->n_stage > 0 && skit->stage) { free(skit->stage); skit->stage = NULL; }
+				if (skit->n_jump > 0 && skit->jump) { free(skit->jump); skit->jump = NULL; }
+				if (skit->n_takes > 0 && skit->takes) {
+					for (int i = 0; i < skit->n_takes; i++) {
+						if (skit->takes[i]) take_ptr(skit->takes[i]).reset();
+					}
+					free(skit->takes); skit->takes = NULL;
+				}
+				free(skit);
+			}
+		}
+	};
+
+	typedef std::unique_ptr<unnufm_skit_t, skit_deleter> skit_ptr;
+
+	typedef struct storyboard_deleter {
+		void operator()(unnufm_storyboard_t* story) const {
+			if (story) {
+				if (story->n_scenes > 0 && story->scenes) {
+					for (int i = 0; i < story->n_scenes; i++)
+					{
+						if (story->scenes[i]) scene_ptr(story->scenes[i]).reset();
+					}
+					free(story->scenes);
+				}
+				free(story);
+			}
+		}
+	};
+
+	typedef std::unique_ptr<unnufm_storyboard_t, storyboard_deleter> storyboard_ptr;
 	
 	// ---------------- Storyboard Class ----------------
 	class Storyboard {
 
 	public:
-		std::vector<scene_t> scenes;
-		void addScene(const scene_t& scene);
-
-		scene_t& addSceneReturnRef(const scene_t& scene);
 		
+		Storyboard() = default;
+		Storyboard(const Storyboard& obj) = default;
+		Storyboard(Storyboard&& obj) noexcept = default;
+		Storyboard& operator=(const Storyboard& obj) = default;
+		Storyboard& operator=(Storyboard&& obj) noexcept = default;
+
+		~Storyboard() {
+			if (storyboard) {
+				storyboard.reset();
+			}
+		}
+
+		Storyboard(unnufm_storyboard_t* story);
+
+		Storyboard(const char* script);
+
+		void update(unnufm_storyboard_t* story) {
+			storyboard.reset(story);
+		}
+
+		unnufm_storyboard_t* getScenes() const {
+			return storyboard.get();
+		}
+
 		std::string exportToEDL() const;
 		
 		std::string exportToPremiereXML(float fps) const;
@@ -345,10 +524,10 @@ namespace unnufm {
 		
 		std::string exportToSRT() const;
 
-		std::string firstSceneID() const {
-			if (scenes.empty()) return "";
-			return scenes.front().sceneID;
-		}
+		std::string firstSceneID() const;
+	private:	
+		storyboard_ptr storyboard;
+		void parse(const char* script);
 		
 	};
 
@@ -356,81 +535,54 @@ namespace unnufm {
 	// Piper TTS
 	// =====================
 	class PiperTTS {
-	private:
-		std::map<std::string, std::pair<int32_t, bool>> voices;
 	public:
-		audio_t speak(const cue_line_t& line);
+		static unnufm_audio_t* speak(unnufm_cue_line_t* line, const unnufm_speaker_list_t* voices);
 
-		void setVoice(const std::string& speaker, int32_t speaker_id, bool is_robot);
+		static unnufm_speaker_properties_t find_speaker(const unnufm_speaker_list_t* actors, const char* speaker);
 
-		std::pair<int32_t, bool> getVoice(const std::string& speaker) const;
 	};
 
 	// ---------------- Skit Grabber ----------------
 	class SkitGrabber {
 	public:
-		static bool grab(skit_t& skit);
+		static bool grab(unnufm_skit_t& skit);
 	};
 
 	// ---------------- Script Parser ----------------
 	class ScriptParser {
 	public:
-
-		static Storyboard toStoryboard(const nlohmann::json& j);
-		static std::set<std::string> getCreditedActorsInStoryboard(const Storyboard& storyboard);
-		static std::set<std::string> getActorsInSkit(const skit_t& skit);
-		static std::set<std::string> getCreditedActorsInScene(const scene_t& scene);
-		static std::set<std::string> getCreditedActorsInTake(const take_t& take);
+		static unnufm_storyboard_t* toStoryboard(nlohmann::json j);
+		static unnufm_storyboard_t* toStoryboard(const char* script);
+		static void toStoryboardByRef(const char* script, Storyboard* story);
+		static std::set<std::string> getCreditedActorsInStoryboard(Storyboard storyboard);
+		static std::set<std::string> getActorsInSkit(unnufm_skit_t skit);
+		static std::set<std::string> getCreditedActorsInScene(unnufm_scene_t scene);
+		static std::set<std::string> getCreditedActorsInTake(unnufm_take_t take);
 	};
 
 
-	// ---------------- Dialog Manager ----------------
-	class ProductionWrangler {
-	private:
-		PiperTTS& tts;
-		std::map<std::string, scene_t> scenes;
-		Storyboard storyboard;
-		// Send audio file path to UE5 for Speech2Face processing
-		void SendSkitToUnrealEngine(const skit_t& skit);
-	public:
-		
-		ProductionWrangler(PiperTTS& actors) : tts(actors) {}
-
-		ProductionWrangler(PiperTTS& actors, const std::string& script);
-
-		ProductionWrangler(PiperTTS& actors, Storyboard& script) : tts(actors), storyboard(script) {}
-				
-		void load(const std::string& script);
-		
-		Storyboard getStoryboard() const {
-			return storyboard;
-		}
-		
-		Scene getScene(std::string& sceneId) {
-			return scenes[sceneId];
-		}
-
-		Performance toPerformance(const cue_line_t& line);
-
-		Take toTake(const cue_t& cue);
-
-		Skit toSkit(const scene_t& scene);
-
-		void perform(const scene_t& scene);
-
-		std::string play(std::string sceneId);
-	};
+    // Replace the default constructor for ProductionWrangler with one that takes a PiperTTS reference
+    class ProductionWrangler {
+    private:
+					static void SendSkitToUnrealEngine(unnufm_skit_t skit);
+    public:
+					static unnufm_performance_t* toPerformance(const unnufm_cue_line_t* line, const unnufm_speaker_list_t* voices);
+					static unnufm_take_t* toTake(const unnufm_cue_t* cue, const unnufm_speaker_list_t* voices);
+					static unnufm_skit_t* toSkit(const unnufm_scene_t* scene, const unnufm_speaker_list_t* voices);
+					static void perform(const unnufm_scene_t* scene, const unnufm_speaker_list_t* voices);
+					static void play(const unnufm_scene_t* scene, const unnufm_speaker_list_t* voices);
+    };
 	// ---------------- Scene Manager ------------------
 	class SceneManager {
 
 	public:
-		SceneManager(ProductionWrangler&  manager) : wrangler(manager) {}
+		SceneManager() = default;
 
 		void LoadStoryboard(const std::string& script);
 
-		void run(const std::string& startScene);
+		void run(const unnufm_storyboard_t* story, const unnufm_speaker_list_t* voices);
 
-	private:
-		ProductionWrangler& wrangler;
+	//private:
+	//	ProductionWrangler wrangler;
 	};
 }

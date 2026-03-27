@@ -8,17 +8,22 @@
 #include <algorithm>
 #include "unnu_fm/cxx-api.h"
 
-static moodycamel::ConcurrentQueue<unnufm::Storyboard> scenequeue;
+static moodycamel::ConcurrentQueue<unnufm_storyboard_t> stories;
 
-static moodycamel::ConcurrentQueue<unnufm::skit_t> skits;
+static moodycamel::ConcurrentQueue<unnufm_skit_t> skits;
 
-
-void unnufm::Storyboard::addScene(const scene_t& scene) {
-	scenes.push_back(scene);
+unnufm::Storyboard::Storyboard(const char* script) {
+	parse(script);
 }
-unnufm::scene_t& unnufm::Storyboard::addSceneReturnRef(const scene_t& scene) {
-	scenes.push_back(scene);
-	return scenes.back();
+
+unnufm::Storyboard::Storyboard(unnufm_storyboard_t* story) {
+	storyboard.reset(story);
+}
+
+
+void unnufm::Storyboard::parse(const char* script) {
+	unnufm_storyboard_t* story = unnufm::ScriptParser::toStoryboard(script);
+	storyboard.reset(story);
 }
 
 std::string unnufm::Storyboard::exportToEDL() const {
@@ -29,14 +34,19 @@ std::string unnufm::Storyboard::exportToEDL() const {
 	int eventNum = 1;
 	double currentTime = 0.0;
 
-	for (const auto& scene : scenes) {
-		for (const auto& cue : scene.cues) {
+	if (storyboard->n_scenes > 0 && storyboard->scenes)
+		for (int i = 0; i < storyboard->n_scenes; i++) {
+		unnufm_scene_t* scene = storyboard->scenes[i];
+		if (scene->n_cues > 0 && scene->cues) 
+		for (int i = 0; i < scene->n_cues; i++) {
+			unnufm_cue_t* cue = scene->cues[i];
 			double cueStart = currentTime;
 			double cueDuration = 0.0;
-
-			for (const auto& line : cue.lines) {
-				double lineStart = cueStart + line.delay;
-				double lineEnd = lineStart + 2.0 + line.pause; // assume 2s per line + pause
+			if (cue->n_lines > 0 && cue->lines)
+				for (int j = 0; j < cue->n_lines; j++) {
+				unnufm_cue_line_t* line = cue->lines[j];
+				double lineStart = cueStart + line->delay;
+				double lineEnd = lineStart + 2.0 + line->pause; // assume 2s per line + pause
 				cueDuration = std::max(cueDuration, lineEnd - cueStart);
 
 				out << eventNum++ << "  AX       V     C        "
@@ -44,7 +54,7 @@ std::string unnufm::Storyboard::exportToEDL() const {
 					<< "00:00:" << int(lineEnd) << ":00 "
 					<< "00:00:" << int(lineStart) << ":00 "
 					<< "00:00:" << int(lineEnd) << ":00\n";
-				out << "* FROM CLIP NAME: " << scene.sceneID << "_" << line.speaker << "\n";
+				out << "* FROM CLIP NAME: " << scene->sceneID << "_" << line->speaker << "\n";
 			}
 
 			currentTime += cueDuration;
@@ -61,21 +71,26 @@ std::string unnufm::Storyboard::exportToPremiereXML(float fps) const {
 
 	int trackIndex = 1;
 	double currentTime = 0.0;
-
-	for (const auto& scene : scenes) {
-		for (const auto& cue : scene.cues) {
+	if (storyboard->n_scenes > 0 && storyboard->scenes)
+		for (int i = 0; i < storyboard->n_scenes; i++) {
+		unnufm_scene_t* scene = storyboard->scenes[i];
+		if (scene->n_cues > 0 && scene->cues)
+			for (int i = 0; i < scene->n_cues; i++) {
+			unnufm_cue_t* cue = scene->cues[i];
 			double cueStart = currentTime;
 			double cueDuration = 0.0;
 
-			for (const auto& line : cue.lines) {
-				double lineStart = cueStart + line.delay;
-				double lineEnd = lineStart + 2.0 + line.pause;
+			if (cue->n_lines > 0 && cue->lines)
+				for (int j = 0; j < cue->n_lines; j++) {
+				unnufm_cue_line_t* line = cue->lines[j];
+				double lineStart = cueStart + line->delay;
+				double lineEnd = lineStart + 2.0 + line->pause;
 				cueDuration = std::max(cueDuration, lineEnd - cueStart);
 
 				// Video placeholder
 				out << "<track>\n";
-				out << "<clipitem id=\"" << scene.sceneID << "_" << line.speaker << "\">\n";
-				out << "<name>" << line.speaker << "</name>\n";
+				out << "<clipitem id=\"" << scene->sceneID << "_" << line->speaker << "\">\n";
+				out << "<name>" << line->speaker << "</name>\n";
 				out << "<start>" << int(lineStart * fps) << "</start>\n"; // 25fps
 				out << "<end>" << int(lineEnd * fps) << "</end>\n";
 				out << "<in>0</in>\n<out>" << int((lineEnd - lineStart) * fps) << "</out>\n";
@@ -112,21 +127,26 @@ std::string unnufm::Storyboard::exportToSRT() const {
 
 	int subtitleIndex = 1;
 	double currentTime = 0.0;
-
-	for (const auto& scene : scenes) {
-		for (const auto& cue : scene.cues) {
+	if (storyboard->n_scenes > 0 && storyboard->scenes)
+		for (int i = 0; i < storyboard->n_scenes; i++) {
+			unnufm_scene_t* scene = storyboard->scenes[i];
+		if (scene->n_cues > 0 && scene->cues)
+			for (int i = 0; i < scene->n_cues; i++) {
+				unnufm_cue_t* cue = scene->cues[i];
 			double cueStart = currentTime;
 			double cueDuration = 0.0;
 
-			if (cue.timing == unnu_scene_timing::TIMING_SIMULTANEOUS) {
+			if (cue->timing == unnufm_scene_timing::TIMING_SIMULTANEOUS) {
 				// All lines start together
 				double start = cueStart;
 				double end = start;
 				std::ostringstream text;
-				for (const auto& l : cue.lines) {
-					text << l.speaker << ": " << l.text;
+				if (cue->n_lines > 0 && cue->lines)
+					for (int j = 0; j < cue->n_lines; j++) {
+					unnufm_cue_line_t* l = cue->lines[j];
+					text << l->speaker << ": " << l->text;
 					text << "\n";
-					double lineEnd = start + 2.0 + l.pause;
+					double lineEnd = start + 2.0 + l->pause;
 					if (lineEnd > end) end = lineEnd;
 				}
 				out << subtitleIndex++ << "\n"
@@ -136,12 +156,14 @@ std::string unnufm::Storyboard::exportToSRT() const {
 			}
 			else {
 				// Overlap or sequential
-				for (const auto& l : cue.lines) {
-					double start = cueStart + l.delay;
-					double end = start + 2.0 + l.pause;
+				if (cue->n_lines > 0 && cue->lines)
+					for (int j = 0; j < cue->n_lines; j++) {
+					unnufm_cue_line_t* l = cue->lines[j];
+					double start = cueStart + l->delay;
+					double end = start + 2.0 + l->pause;
 					out << subtitleIndex++ << "\n"
 						<< formatSRTTime(start) << " --> " << formatSRTTime(end) << "\n"
-						<< l.speaker << ": " << l.text;
+						<< l->speaker << ": " << l->text;
 					out << "\n\n";
 					if (end - cueStart > cueDuration) cueDuration = end - cueStart;
 				}
@@ -153,127 +175,279 @@ std::string unnufm::Storyboard::exportToSRT() const {
 	return out.str();
 }
 
-unnufm::Storyboard unnufm::ScriptParser::toStoryboard(const nlohmann::json& j) {
-	Storyboard sb;
+std::string unnufm::Storyboard::firstSceneID() const {
+	if (!(storyboard->n_scenes > 0 && storyboard->scenes)) return "";
+	unnufm_scene_t* _scene = storyboard->scenes[0];
+	return std::string(_scene->sceneID);
+}
 
-	for (auto& sceneJson : j["scenes"]) {
-		scene_t scene;
-		scene.sceneID = sceneJson["sceneID"].get<std::string>();
-		if (sceneJson.contains("location")) scene.location = sceneJson["location"].get<std::string>();
-		if (sceneJson.contains("stage")) scene.stage = sceneJson["stage"].get<std::string>();
-		if (sceneJson.contains("jump")) scene.jump = sceneJson["jump"].get<std::string>();
+unnufm_storyboard_t* unnufm::ScriptParser::toStoryboard(const char* script) {
+	// std::string script_str(script);
+	nlohmann::json j = nlohmann::json::parse(script);
+	// std::vector<unnufm::scene_t> _scenes(toScenes(j));
 
-		for (auto& cueJson : sceneJson["cues"]) {
-			cue_t cue;
-			cue.timing = unnufm::unnu_scene_timing_from_string(cueJson["timing"].get<std::string>());
-			if (cueJson.contains("stagger")) cue.stagger = cueJson["stagger"].get<double>();
-			if (cueJson.contains("dynamic")) cue.dynamic = cueJson["dynamic"].get<bool>();
+	return toStoryboard(j);
+}
+unnufm_storyboard_t* unnufm::ScriptParser::toStoryboard(nlohmann::json j) {
+	std::vector<unnufm_scene_t*> _scenes;
+	if (j.contains("scenes") && j["scenes"].is_array()) {
+		for (const auto& sceneJson : j["scenes"]) {
+			unnufm_scene_t* scene = (unnufm_scene_t*) malloc(sizeof(unnufm_scene_t));
+			// Safe string extraction
+			std::string tempSceneID = sceneJson.value("sceneID", std::string());
+			int sceneIDBufferSize = tempSceneID.size(); // +1 for null terminator
+			scene->sceneID = (char*) calloc(sceneIDBufferSize + 1, sizeof(char));
+			std::memcpy(scene->sceneID, tempSceneID.c_str(), sceneIDBufferSize);
+			scene->sceneID[sceneIDBufferSize] = '\0'; // Ensure null termination
+			scene->n_sceneID = sceneIDBufferSize;
+			std::string tempLocation = sceneJson.value("location", std::string());
+			int locationBufferSize = tempLocation.size(); // +1 for null terminator
+			scene->location = (char*) calloc(locationBufferSize + 1, sizeof(char));
+			std::memcpy(scene->location, tempLocation.c_str(), locationBufferSize);
+			scene->location[locationBufferSize] = '\0'; // Ensure null termination
+			scene->n_location = locationBufferSize;
+			std::string tempStage = sceneJson.value("stage", std::string());
+			int stageBufferSize = tempStage.size(); // +1 for null terminator
+			scene->stage = (char*) calloc(stageBufferSize + 1, sizeof(char));
+			std::memcpy(scene->stage, tempStage.c_str(), stageBufferSize);
+			scene->stage[stageBufferSize] = '\0'; // Ensure null termination
+			scene->n_stage = stageBufferSize;
+			std::string tempJump = sceneJson.value("jump", std::string());
+			int jumpBufferSize = tempJump.size(); // +1 for null terminator
+			scene->jump = (char*) calloc(jumpBufferSize + 1, sizeof(char));
+			std::memcpy(scene->jump, tempJump.c_str(), jumpBufferSize);
+			scene->jump[jumpBufferSize] = '\0'; // Ensure null termination
+			scene->n_jump = jumpBufferSize;
+			std::vector<unnufm_cue_t*> cues;
+			if (sceneJson.contains("cues") && sceneJson["cues"].is_array()) {
+				for (const auto& cueJson : sceneJson["cues"]) {
+					unnufm_cue_t* cue = (unnufm_cue_t*) malloc(sizeof(unnufm_cue_t));
+					if (cueJson.contains("timing") && cueJson["timing"].is_string()) {
+						cue->timing = unnufm::unnufm_scene_timing_from_string(cueJson["timing"].get<std::string>());
+					}
+					cue->stagger = cueJson.value("stagger", 0.7);
+					cue->dynamic = cueJson.value("dynamic", false);
+					std::vector<unnufm_cue_line_t*> lines;
+					if (cueJson.contains("lines") && cueJson["lines"].is_array()) {
+						for (const auto& lineJson : cueJson["lines"]) {
+							unnufm_cue_line_t* line = (unnufm_cue_line_t*) malloc(sizeof(unnufm_cue_line_t));
+							std::string tempSpeaker = lineJson.value("speaker", std::string());
+							int speakerBufferSize = tempSpeaker.size(); // +1 for null terminator
+							line->speaker = (char*) calloc(speakerBufferSize + 1, sizeof(char));
+							std::memcpy(line->speaker, tempSpeaker.c_str(), speakerBufferSize);
+							line->speaker[speakerBufferSize] = '\0'; // Ensure null termination
+							line->n_speaker = speakerBufferSize;
+							std::string tempText = lineJson.value("text", std::string());
+							int textBufferSize = tempText.size(); // +1 for null terminator
+							line->text = (char*) calloc(textBufferSize + 1, sizeof(char));
+							std::memcpy(line->text, tempText.c_str(), textBufferSize);
+							line->text[textBufferSize] = '\0'; // Ensure null termination
+							line->n_text = textBufferSize;
+							line->pause = lineJson.value("pause", 0.0);
+							line->delay = lineJson.value("delay", 0.0);
+							if (lineJson.contains("emotion") && lineJson["emotion"].is_string()) {
+								line->emotion = unnutts::emotion_from_string(lineJson["emotion"].get<std::string>());
+							}
+							else {
+								line->emotion = EEMOTION::EMOTION_NEUTRAL; // default to neutral
+							}
+							line->lipSync = lineJson.value("lip_sync", true);
+							std::vector<unnufm_action_t*> actions;
+							if (lineJson.contains("actions") && lineJson["actions"].is_array()) {
+								for (const auto& actionJson : lineJson["actions"]) {
+									unnufm_action_t* action = (unnufm_action_t*) malloc(sizeof(unnufm_action_t));
+									std::string tempTarget = actionJson.value("target", std::string());
+									int targetBufferSize = tempTarget.size(); // +1 for null terminator
+									action->target = (char*) calloc(targetBufferSize + 1, sizeof(char));
+									std::memcpy(action->target, tempTarget.c_str(), targetBufferSize);
+									action->target[targetBufferSize] = '\0'; // Ensure null termination
+									action->n_target = targetBufferSize;
+									std::string tempGesture = actionJson.value("gesture", std::string());
+									int gestureBufferSize = tempGesture.size(); // +1 for null terminator
+									action->gesture = (char*) calloc(gestureBufferSize + 1, sizeof(char));
+									std::memcpy(action->gesture, tempGesture.c_str(), gestureBufferSize);
+									action->gesture[gestureBufferSize] = '\0'; // Ensure null termination
+									action->n_gesture = gestureBufferSize;
 
-			if (cueJson.contains("lines")) {
-				for (auto& lineJson : cueJson["lines"]) {
-					cue_line_t line;
-					line.speaker = lineJson["speaker"].get<std::string>();
-					if (lineJson.contains("text")) line.text = lineJson["text"].get<std::string>();
-					if (lineJson.contains("pause")) line.pause = lineJson["pause"].get<double>();
-					if (lineJson.contains("delay")) line.delay = lineJson["delay"].get<double>();
-					if (lineJson.contains("emotion")) line.emotion = unnutts::emotion_from_string(lineJson["emotion"].get<std::string>());
-					if (lineJson.contains("lip_sync")) line.lipSync = lineJson["lip_sync"].get<bool>();
-					if (lineJson.contains("actions")) {
-						for (auto& actionJson : lineJson["actions"]) {
-							action_t action;
-							action.gesture = actionJson["gesture"].get<std::string>();
-							if (actionJson.contains("persistent")) action.persistent = actionJson["persistent"].get<bool>();
-							if (actionJson.contains("delay")) action.delay = actionJson["delay"].get<double>();
-							line.actions.push_back(action);
+									action->motion = unnufm_motion_from_string(actionJson.value("motion", std::string()));
+									action->persistent = actionJson.value("persistent", false);
+									action->delay = actionJson.value("delay", 0.0);
+									actions.push_back(action);
+								}
+								
+							}
+							int n_actions = actions.size();
+							if (n_actions > 0) {
+								line->actions = (unnufm_action_t**)calloc(n_actions, sizeof(unnufm_action_t*));
+								std::memcpy(line->actions, actions.data(), n_actions * sizeof(unnufm_action_t*));
+							}
+							line->n_actions = n_actions;
+							lines.push_back(line);
 						}
 					}
-					cue.lines.push_back(line);
-				}
-			}
-			
-			if (cueJson.contains("sounds")) {
-				for (auto& soundJson : cueJson["sounds"]) {
-					sound_cue_t soundCue;
-					soundCue.uri = soundJson["uri"].get<std::string>();
-					if (soundJson.contains("type")) soundCue.type = sound_cue_type_from_string(soundJson["type"].get<std::string>());
-					if (soundJson.contains("time")) soundCue.time = soundJson["time"].get<double>();
-					cue.sounds.push_back(soundCue);
-				}
-			}
-			if (cueJson.contains("shots")) {
-				for (auto& cameraJson : cueJson["shots"]) {
-					camera_cue_t cameraCue;
-					
-					if (cameraJson.contains("size")) cameraCue.size = camera_shot_size_from_string(cameraJson["size"].get<std::string>());
-					if (cameraJson.contains("angle")) cameraCue.angle = camera_shot_angle_from_string(cameraJson["angle"].get<std::string>());
-					if (cameraJson.contains("movement")) cameraCue.movement = camera_shot_movement_from_string(cameraJson["movement"].get<std::string>());
-					if (cameraJson.contains("target")) cameraCue.target = cameraJson["target"].get<std::string>();
-					if (cameraJson.contains("duration")) cameraCue.duration = cameraJson["duration"].get<double>();
-					if (cameraJson.contains("transition")) cameraCue.transition = cameraJson["transition"].get<double>();
-					cue.shots.push_back(cameraCue);
-				}
-			}
-			scene.cues.push_back(cue);
-		}
+					int n_lines = lines.size();
+					if (n_lines > 0) {
+						cue->lines = (unnufm_cue_line_t**)calloc(n_lines, sizeof(unnufm_cue_line_t*));
+						std::memcpy(cue->lines, lines.data(), n_lines * sizeof(unnufm_cue_line_t*));
+					}
+					cue->n_lines = n_lines;
+					std::vector<unnufm_sound_cue_t*> sounds;
+					if (cueJson.contains("sounds") && cueJson["sounds"].is_array()) {
+						
+						for (const auto& soundJson : cueJson["sounds"]) {
+							unnufm_sound_cue_t* soundCue = (unnufm_sound_cue_t*) malloc(sizeof(unnufm_sound_cue_t));
+							std::string tempUri = soundJson.value("uri", std::string());
+							int urlBufferSize = tempUri.size(); // +1 for null terminator
+							soundCue->uri = (char*) calloc(urlBufferSize + 1, sizeof(char));
+							std::memcpy(soundCue->uri, tempUri.c_str(), urlBufferSize);
+							soundCue->uri[urlBufferSize] = '\0'; // Ensure null termination
+							soundCue->n_uri = urlBufferSize;
+							soundCue->type = sound_cue_type_from_string(soundJson.value("type", std::string()));
+							
+							soundCue->time = soundJson.value("time", 0.0);
+							sounds.push_back(soundCue);
+						}
+						
+						// std::memcpy(cue->sounds, , sounds.size() * sizeof(unnufm_sound_cue_t*));
+					}
+					int n_sounds = sounds.size();
+					if (n_sounds > 0) {
+						cue->sounds = (unnufm_sound_cue_t**)calloc(n_sounds, sizeof(unnufm_sound_cue_t*));
+						std::memcpy(cue->sounds, sounds.data(), n_sounds * sizeof(unnufm_sound_cue_t*));
+					}
+					cue->n_sounds = n_sounds;
 
-		sb.scenes.push_back(scene);
+					std::vector<unnufm_camera_cue_t*> shots;
+					if (cueJson.contains("shots") && cueJson["shots"].is_array()) {
+						
+						for (const auto& cameraJson : cueJson["shots"]) {
+							unnufm_camera_cue_t* cameraCue = (unnufm_camera_cue_t*) malloc(sizeof(unnufm_camera_cue_t));
+							std::string tempCamTarget = cameraJson.value("target", std::string());
+							int camTargetBufferSize = tempCamTarget.size(); // +1 for null terminator
+							cameraCue->target = (char*)calloc(camTargetBufferSize + 1, sizeof(char));
+							std::memcpy(cameraCue->target, tempCamTarget.c_str(), camTargetBufferSize);
+							cameraCue->target[camTargetBufferSize] = '\0'; // Ensure null termination
+							cameraCue->n_target = camTargetBufferSize;
+							if (cameraJson.contains("size") && cameraJson["size"].is_string()) {
+								cameraCue->size = camera_shot_size_from_string(cameraJson["size"].get<std::string>());
+							}
+							if (cameraJson.contains("angle") && cameraJson["angle"].is_string()) {
+								cameraCue->angle = camera_shot_angle_from_string(cameraJson["angle"].get<std::string>());
+							}
+							if (cameraJson.contains("movement") && cameraJson["movement"].is_string()) {
+								cameraCue->movement = camera_shot_movement_from_string(cameraJson["movement"].get<std::string>());
+							}
+							cameraCue->duration = cameraJson.value("duration", 0.0);
+							cameraCue->transition = cameraJson.value("transition", 0.0);
+							shots.push_back(cameraCue);
+						}
+						
+					}
+					int n_shots = shots.size();
+					if (n_shots > 0) {
+						cue->shots = (unnufm_camera_cue_t**)calloc(n_shots, sizeof(unnufm_camera_cue_t*));
+						std::memcpy(cue->shots, shots.data(), n_shots * sizeof(unnufm_camera_cue_t*));
+					}
+					cue->n_shots = n_shots;
+					cues.push_back(cue);
+				}
+				
+			}
+			int n_cues = cues.size();
+			if (n_cues > 0) {
+				scene->cues = (unnufm_cue_t**)calloc(n_cues, sizeof(unnufm_cue_t*));
+				std::memcpy(scene->cues, cues.data(), n_cues * sizeof(unnufm_cue_t*));
+			}
+			scene->n_cues = n_cues;
+			_scenes.push_back(scene);
+		}
 	}
-	return sb;
+	unnufm_storyboard_t* storyboard = (unnufm_storyboard_t*)malloc(sizeof(unnufm_storyboard_t));
+	int n_scenes = _scenes.size();
+	if (n_scenes > 0) {
+		storyboard->scenes = (unnufm_scene_t**) calloc(n_scenes, sizeof(unnufm_scene_t*));
+		std::memcpy(storyboard->scenes, _scenes.data(), n_scenes * sizeof(unnufm_scene_t*));
+	}
+	storyboard->n_scenes = n_scenes;
+	return storyboard;
 }
 
-std::set<std::string> unnufm::ScriptParser::getCreditedActorsInStoryboard(const Storyboard& storyboard) {
+std::set<std::string> unnufm::ScriptParser::getCreditedActorsInStoryboard(Storyboard storyboard) {
 	std::set<std::string> actors;
-	for (const scene_t& scene : storyboard.scenes) {
-		for (const cue_t& cue : scene.cues) {
-			for (const cue_line_t& line : cue.lines) {
-				if (!line.speaker.empty() && !line.text.empty()) actors.insert(line.speaker);
+	unnufm_storyboard_t* story = storyboard.getScenes();
+	if (story->n_scenes > 0 && story->scenes)
+		for (int i = 0; i < story->n_scenes; i++) {
+		unnufm_scene_t* scene = story->scenes[i];
+		if (scene->n_cues > 0 && scene->cues)
+			for (int i = 0; i < scene->n_cues; i++) {
+				unnufm_cue_t* cue = scene->cues[i];
+				if (cue->n_lines > 0 && cue->lines)
+					for (int j = 0; j < cue->n_lines; j++) {
+					unnufm_cue_line_t* line = cue->lines[j];
+					if (line->speaker && line->text && strlen(line->text) > 0) actors.insert(std::string(line->speaker));
 			}
 		}
 	}
 	return actors;
 }
 
-std::set<std::string> unnufm::ScriptParser::getActorsInSkit(const skit_t& skit)
+std::set<std::string> unnufm::ScriptParser::getActorsInSkit(unnufm_skit_t skit)
 {
 	std::set<std::string> actors;
-	for (const take_t& take : skit.takes) {
-		for (const performance_t& performance : take.performances) {
-			if (!performance.line.speaker.empty()) actors.insert(performance.line.speaker);
+	if (skit.n_takes > 0 && skit.takes)
+		for (int i = 0; i < skit.n_takes; i++) {
+			unnufm_take_t* take = skit.takes[i];
+			if (take->n_performances > 0 && take->performances)
+				for (int j = 0; j < take->n_performances; j++) {
+					unnufm_performance_t* performance = take->performances[j];
+					if (performance->line && performance->line->speaker && strlen(performance->line->speaker) > 0) actors.insert(std::string(performance->line->speaker));
 		}
 	}
 	return actors;
 }
 
-std::set<std::string>  unnufm::ScriptParser::getCreditedActorsInTake(const take_t& take)
+std::set<std::string>  unnufm::ScriptParser::getCreditedActorsInTake(unnufm_take_t take)
 {
 	std::set<std::string> actors;
-	for (const performance_t& performance : take.performances)
-	{
-			if (!performance.line.speaker.empty() && !performance.audio.chunk.samples.empty()) actors.insert(performance.line.speaker);
+	if (take.n_performances > 0 && take.performances)
+		for (int j = 0; j < take.n_performances; j++) {
+			unnufm_performance_t* performance = take.performances[j];
+			if (performance->line && performance->line->speaker && strlen(performance->line->speaker) > 0 && performance->audio->chunk->n_samples > 0) actors.insert(std::string(performance->line->speaker));
 	}
 	return actors;
 }
 
-std::set<std::string> unnufm::ScriptParser::getCreditedActorsInScene(const scene_t& scene) {
+std::set<std::string> unnufm::ScriptParser::getCreditedActorsInScene(unnufm_scene_t scene) {
 	std::set<std::string> actors;
-	for (const cue_t& cue : scene.cues) {
-		for (const cue_line_t& line : cue.lines) {
-			if (!line.speaker.empty() && !line.text.empty()) actors.insert(line.speaker);
+	if (scene.n_cues > 0 && scene.cues)
+		for (int i = 0; i < scene.n_cues; i++) {
+			unnufm_cue_t* cue = scene.cues[i];
+			if (cue->n_lines > 0 && cue->lines)
+				for (int j = 0; j < cue->n_lines; j++) {
+					unnufm_cue_line_t* line = cue->lines[j];
+					if (line->speaker && strlen(line->speaker) && line->text && strlen(line->text) > 0) actors.insert(std::string(line->speaker));
 		}
 	}
 	return actors;
 }
 
-unnufm::audio_t unnufm::PiperTTS::speak(const cue_line_t& line) {
-	audio_t audio;
-	audio.text = line.text;
-	auto& speaker = getVoice(line.speaker);
-	if (speaker.first >= 0) {
-		if (!line.text.empty()) {
-			ut_audio_sample_t* result = unnu_tts(speaker.first, line.emotion, speaker.second, line.text.c_str());
+unnufm_audio_t* unnufm::PiperTTS::speak(unnufm_cue_line_t* line, const unnufm_speaker_list_t* voices) {
+	unnufm_audio_t* audio = (unnufm_audio_t*) malloc(sizeof(unnufm_audio_t));
+	int textSize = strlen(line->text);
+	audio->text = (char*) calloc(textSize+1, sizeof(char));
+	std::memcpy(audio->text, line->text, textSize);
+	audio->text[textSize] = '\0'; // Ensure null termination
+	audio->n_text = textSize;
+	auto& speaker = unnufm::PiperTTS::find_speaker(voices, line->speaker);
+	if (speaker.speaker_id >= 0) {
+		if (strlen(line->text) > 0) {
+			ut_audio_sample_t* result = unnu_tts(speaker.speaker_id, line->emotion, speaker.is_robot != 0, line->text);
 			if (result->num_samples > 0) {
-				audio.chunk.sample_rate = result->sample_rate;
-				audio.chunk.samples = std::vector<float>(result->samples, result->samples + result->num_samples);
+				audio->chunk = (unnufm_audio_chunk_t*) malloc(sizeof(unnufm_audio_chunk_t));
+				audio->chunk->sample_rate = result->sample_rate;
+				audio->chunk->n_samples = result->num_samples;
+				audio->chunk->samples = (float*) calloc(result->num_samples, sizeof(float));
+				std::memcpy(audio->chunk->samples, result->samples, result->num_samples * sizeof(float));
 			}
 			ut_audio_sample_free(result);
 		}
@@ -281,97 +455,137 @@ unnufm::audio_t unnufm::PiperTTS::speak(const cue_line_t& line) {
 	return audio;
 }
 
-void unnufm::PiperTTS::setVoice(const std::string& speaker, int32_t speaker_id, bool is_robot) {
-	voices[speaker] = std::make_pair(speaker_id, is_robot);
-}
 
-std::pair<int32_t, bool> unnufm::PiperTTS::getVoice(const std::string& speaker) const {
-	auto it = voices.find(speaker);
-	if (it != voices.end()) return it->second;
-	return std::make_pair(-1, false);
-}
-
-bool unnufm::SkitGrabber::grab(skit_t& skit) {
+bool unnufm::SkitGrabber::grab(unnufm_skit_t& skit) {
 	return skits.try_dequeue(skit);
 }
 
+//void unnufm::ProductionWrangler::load(const std::string& script) {
+//	nlohmann::json j = nlohmann::json::parse(script);
+//	storyboard = ScriptParser::toStoryboard(j);
+//	load(storyboard);
+//	
+//}
+//
+//void unnufm::ProductionWrangler::load(const unnufm_storyboard_t* storyboard) {
+//	if (storyboard->n_scenes > 0 && storyboard->scenes)
+//		for (int i = 0; i < storyboard->n_scenes; i++) {
+//			unnufm_scene_t* scene = storyboard->scenes[i];
+//			scenes[scene->sceneID] = scene;
+//		}
+//}
 
-
-unnufm::ProductionWrangler::ProductionWrangler(PiperTTS& actors, const std::string& script) : tts(actors) {
-	load(script);
+void unnufm::ProductionWrangler::play(const unnufm_scene_t* scene, const unnufm_speaker_list_t* voices) {
+	//auto it = scenes.find(sceneId);
+	//if (it == scenes.end()) {
+	//	return "";
+	//}
+	//unnufm_scene_t* scene = it->second;
+	perform(scene, voices);
 }
 
-void unnufm::ProductionWrangler::load(const std::string& script) {
-	nlohmann::json j = nlohmann::json::parse(script);
-
-	storyboard = ScriptParser::toStoryboard(j);
-	for (const scene_t& scene : storyboard.scenes) {
-		scenes[scene.sceneID] = scene;
-	}
-}
-
-std::string unnufm::ProductionWrangler::play(std::string sceneId) {
-	auto it = scenes.find(sceneId);
-	if (it == scenes.end()) {
-		return "";
-	}
-	scene_t& scene = it->second;
-	perform(scene);
-	return scene.jump;
-}
-
-unnufm::performance_t unnufm::ProductionWrangler::toPerformance(const cue_line_t& line) {
-	performance_t placeholder;
-	placeholder.line = line;
-	placeholder.audio = tts.speak(line);
+unnufm_performance_t* unnufm::ProductionWrangler::toPerformance(const unnufm_cue_line_t* line, const unnufm_speaker_list_t* voices) {
+	unnufm_performance_t* placeholder = (unnufm_performance_t*) malloc(sizeof(unnufm_performance_t));
+	placeholder->line = (unnufm_cue_line_t*) malloc(sizeof(unnufm_cue_line_t));
+	placeholder->line->actions =   line->actions;
+	placeholder->line->delay = line->delay;
+	placeholder->line->emotion = line->emotion;	
+	placeholder->line->lipSync = line->lipSync;
+	int speakerBufferSize = strlen(line->speaker); // +1 for null terminator
+	placeholder->line->speaker = (char*) calloc(speakerBufferSize + 1, sizeof(char));
+	std::memcpy(placeholder->line->speaker, line->speaker, speakerBufferSize);
+	placeholder->line->speaker[speakerBufferSize] = '\0'; //
+	placeholder->line->n_speaker = speakerBufferSize;
+	int textBufferSize = strlen(line->text); // +1 for null terminator
+	placeholder->line->text = (char*)calloc(textBufferSize + 1, sizeof(char));
+	std::memcpy(placeholder->line->text, line->text, textBufferSize);
+	placeholder->line->text[textBufferSize] = '\0'; // Ensure null termination
+	placeholder->line->n_text = textBufferSize;
+	placeholder->audio = unnufm::PiperTTS::speak(placeholder->line, voices);
 	return placeholder;
 }
 		
-unnufm::take_t unnufm::ProductionWrangler::toTake(const cue_t& cue) {
-	take_t take;
-	take.timing = cue.timing;
-	take.stagger = cue.stagger;
-	take.dynamic = cue.dynamic;
-	take.sounds = cue.sounds;
-	take.shots = cue.shots;
-	for(const cue_line_t& line :  cue.lines) {
-		performance_t p = toPerformance(line);
-		take.performances.push_back(std::move(p));
+unnufm_take_t* unnufm::ProductionWrangler::toTake(const unnufm_cue_t* cue, const unnufm_speaker_list_t* voices) {
+	unnufm_take_t* take =(unnufm_take_t*) malloc(sizeof(unnufm_take_t));
+	take->timing = cue->timing;
+	take->stagger = cue->stagger;
+	take->dynamic = cue->dynamic;
+	take->sounds = cue->sounds;
+	take->shots = cue->shots;
+	if (cue->n_lines > 0 && cue->lines) {
+		std::vector<unnufm_performance_t*> performances;
+		for (int i = 0; i < cue->n_lines; i++) {
+			unnufm_cue_line_t* line = cue->lines[i];
+			unnufm_performance_t* p = toPerformance(line, voices);
+			performances.push_back(std::move(p));
+		}
+		int n_performances = performances.size();
+		if (n_performances > 0) {
+			take->performances = (unnufm_performance_t**)calloc(n_performances, sizeof(unnufm_performance_t*));
+			std::memcpy(take->performances, performances.data(), n_performances * sizeof(unnufm_performance_t*));
+		}
+		take->n_performances = n_performances;
 	}
 	return take;
 }
 
-unnufm::skit_t unnufm::ProductionWrangler::toSkit(const scene_t& scene) {
-	skit_t skit;
-	skit.sceneID = scene.sceneID;
-	skit.location = scene.location;
-	skit.stage = scene.stage;
-	for(const cue_t& cue : scene.cues) {
-		take_t t = toTake(cue);
-		skit.takes.push_back(std::move(t));
+unnufm_skit_t* unnufm::ProductionWrangler::toSkit(const unnufm_scene_t* scene, const unnufm_speaker_list_t* voices) {
+	unnufm_skit_t* skit = (unnufm_skit_t*) malloc(sizeof(unnufm_skit_t));
+	int sceneIDBufferSize = strlen(scene->sceneID); // +1 for null terminator
+	skit->sceneID = (char*) calloc(sceneIDBufferSize + 1, sizeof(char));
+	std::memcpy(skit->sceneID, scene->sceneID, sceneIDBufferSize);
+	skit->sceneID[sceneIDBufferSize] = '\0'; // Ensure null termination
+	skit->n_sceneID = sceneIDBufferSize;
+	int locationBufferSize = strlen(scene->location); // +1 for null terminator
+	skit->location = (char*) calloc(locationBufferSize + 1, sizeof(char));
+	std::memcpy(skit->location, scene->location, locationBufferSize);
+	skit->location[locationBufferSize] = '\0'; // Ensure null termination
+	skit->n_location = locationBufferSize;
+	int stageBufferSize = strlen(scene->stage); // +1 for null terminator
+	skit->stage = (char*) calloc(stageBufferSize + 1, sizeof(char));
+	std::memcpy(skit->stage, scene->stage, stageBufferSize);
+	skit->stage[stageBufferSize] = '\0'; // Ensure null termination
+	skit->n_stage = stageBufferSize;
+	int jumpBufferSize = strlen(scene->jump); // +1 for null terminator
+	skit->jump = (char*) calloc(jumpBufferSize + 1, sizeof(char));
+	std::memcpy(skit->jump, scene->jump, jumpBufferSize);
+	skit->jump[jumpBufferSize] = '\0'; // Ensure null termination
+	skit->n_jump = jumpBufferSize;
+	if (scene->n_cues > 0 && scene->cues) {
+		std::vector<unnufm_take_t*> takes;
+		for (int i = 0; i < scene->n_cues; i++) {
+			unnufm_cue_t* cue = scene->cues[i];
+			unnufm_take_t* t = toTake(cue, voices);
+			takes.push_back(std::move(t));
+		}
+		int n_takes = takes.size();
+		if (n_takes > 0) {
+			skit->takes = (unnufm_take_t**)calloc(n_takes, sizeof(unnufm_take_t*));
+			std::memcpy(skit->takes, takes.data(), n_takes * sizeof(unnufm_take_t*));
+		}
+		skit->n_takes = n_takes;
 	}
 	return skit;
 }
 
-void unnufm::ProductionWrangler::perform(const scene_t& scene) {
-	skit_t s = toSkit(scene);
-	SendSkitToUnrealEngine(s);
+void unnufm::ProductionWrangler::perform(const unnufm_scene_t* scene, const unnufm_speaker_list_t* voices) {
+	unnufm_skit_t* s = toSkit(scene, voices);
+	SendSkitToUnrealEngine(*s);
 }
 
-void unnufm::ProductionWrangler::SendSkitToUnrealEngine(const skit_t& skit) {
+void unnufm::ProductionWrangler::SendSkitToUnrealEngine(unnufm_skit_t skit) {
 	skits.enqueue(skit);
 }
 
-void unnufm::SceneManager::LoadStoryboard(const std::string& script) {
-	wrangler.load(script);
-}
+//void unnufm::SceneManager::LoadStoryboard(const std::string& script) {
+//	wrangler.load(script);
+//}
 
-void unnufm::SceneManager::run(const std::string& startScene) {
-	std::string currentScene = startScene;
-
-	while (!currentScene.empty()) {
+void unnufm::SceneManager::run(const unnufm_storyboard_t* story, const unnufm_speaker_list_t* voices) {
+	if (story->n_scenes > 0 && story->scenes)
+		for (int i = 0; i < story->n_scenes; i++) {
 		// go to next scene
-		currentScene = wrangler.play(currentScene);
+		unnufm::ProductionWrangler::play(story->scenes[i], voices);
 	}
 }
 
@@ -414,19 +628,37 @@ std::string to_lower_case(const std::string& str) {
 	return result;
 }
 
-static std::string g_unnu_fm_male_string("male");
-static std::string g_unnu_fm_female_string("female");
+static std::string g_unnufm_fm_male_string("male");
+static std::string g_unnufm_fm_female_string("female");
 
-void unnu_fm_process_script(const char* script) {
+unnufm_speaker_properties_t unnufm::PiperTTS::find_speaker(const unnufm_speaker_list_t* actors, const char* speaker) {
+	std::string actor(speaker);
+	if (actors && actors->n_speakers > 0 && actors->speakers) {
+		for (int i = 0; i < actors->n_speakers; i++) {
+			std::string name(actors->speakers[i]->speaker);
+			if (equals_ignore_case(actor, name)) {
+				return actors->speakers[i]->properties;
+			}
+		}
+	}
+	unnufm_speaker_properties_t props;
+	props.is_robot = 0;
+	props.speaker_id = -1;
+	return props;
+}
+
+
+void unnufm_fm_process_script(const char* script) {
 	std::string script_str(script);
 	
 	nlohmann::json j =  nlohmann::json::parse(script_str);
 	
-	auto& story = unnufm::ScriptParser::toStoryboard(j);
+	unnufm_storyboard_t* story = unnufm::ScriptParser::toStoryboard(j);
+
 
 	auto& speakers = unnufm::ScriptParser::getCreditedActorsInStoryboard(story);
-
-	unnufm::PiperTTS tts;
+	std::map<std::string, unnufm_speaker_properties_t> voices;
+	// unnufm::PiperTTS* tts = new unnufm::PiperTTS();
 	for(const auto& speaker : speakers) {
 		if (speaker.empty()) continue;
 		std::string lookup = to_lower_case(speaker);
@@ -443,30 +675,30 @@ void unnu_fm_process_script(const char* script) {
 			{
 				std::string langcode(locale_str, 2);
 				std::string locale_code = langcode + "-" + std::string(locale_str + 3,2);
-				if(genderCode == 2 || starts_with_ci(speaker, g_unnu_fm_male_string))
+				if(genderCode == 2 || starts_with_ci(speaker, g_unnufm_fm_male_string))
 				{
 					std::string maleVoce = std::string("male.") + locale_code;
 					id = ut_get_speaker_id(maleVoce.c_str());
 					if(id < 0)
 					{
-						maleVoce = g_unnu_fm_male_string + "." + langcode;
+						maleVoce = g_unnufm_fm_male_string + "." + langcode;
 						id = ut_get_speaker_id(maleVoce.c_str());
 						if(id < 0)
 						{
-							id = ut_get_speaker_id(g_unnu_fm_male_string.c_str());
+							id = ut_get_speaker_id(g_unnufm_fm_male_string.c_str());
 						}
 						
 					}
-				} else if(genderCode == 1 || starts_with_ci(speaker, g_unnu_fm_female_string)){
+				} else if(genderCode == 1 || starts_with_ci(speaker, g_unnufm_fm_female_string)){
 					std::string femaleVoce = std::string("female.") + locale_code;
 					id = ut_get_speaker_id(femaleVoce.c_str());
 					if(id < 0)
 					{
-						femaleVoce = g_unnu_fm_female_string + "." + langcode;
+						femaleVoce = g_unnufm_fm_female_string + "." + langcode;
 						id = ut_get_speaker_id(femaleVoce.c_str());
 						if(id < 0)
 						{
-							id = ut_get_speaker_id(g_unnu_fm_female_string.c_str());
+							id = ut_get_speaker_id(g_unnufm_fm_female_string.c_str());
 						}
 						
 					}
@@ -479,21 +711,42 @@ void unnu_fm_process_script(const char* script) {
 		if (id >= 0) {
 			// For demonstration, assign robot voices to Manny and Quinn
 			if (lookup == "manny" || lookup == "quinn") {
-				tts.setVoice(speaker, id, true);
+				unnufm_speaker_properties_t props;
+				props.is_robot = 1;
+				props.speaker_id = id;
+				voices[speaker]= props;
 			}
 			else {
-				tts.setVoice(speaker, id, false);
+				unnufm_speaker_properties_t props;
+				props.is_robot = 0;
+				props.speaker_id = id;
+				voices[speaker] = props;
 			}
 		}
 	}
-	unnufm::ProductionWrangler wrangler(tts, story);
-	for(const unnufm::scene_t& scene : story.scenes) {
-		wrangler.perform(scene);
+
+	unnufm_speaker_list_t* list = (unnufm_speaker_list_t*) malloc(sizeof(unnufm_speaker_list_t));
+	int n_voices = voices.size();
+	list->speakers = (unnufm_speaker_ref_t**)calloc(n_voices, sizeof(unnufm_speaker_ref_t*));
+	list->n_speakers = n_voices;
+	int i = 0;
+	for (const auto& pair : voices) {
+		int bufsize = pair.first.size();
+		list->speakers[i] = (unnufm_speaker_ref_t*) malloc(sizeof(unnufm_speaker_ref_t));
+		list->speakers[i]->speaker = (char*)calloc(bufsize, sizeof(char));
+		std::memcpy(list->speakers[i]->speaker, pair.first.c_str(), bufsize);
+		list->speakers[i]->speaker[bufsize] = '\0';
+		list->speakers[i]->n_speaker = bufsize;
+		list->speakers[i]->properties = pair.second;
+		i++;
 	}
-	
-	std::thread th([&wrangler](){
-		unnufm::SceneManager sm(wrangler);
-		sm.run(wrangler.getStoryboard().firstSceneID());
+
+	std::thread th([story, list](){
+		unnufm::SceneManager sm;
+		// unnufm_storyboard_t*  storyboard = wrangler.getStoryboard();
+		if(story->n_scenes > 0 && story->scenes)
+		sm.run(story, list);
+		unnufm::unnufm_speaker_list_ptr(list).reset();
 	});
 	
 	th.detach();
