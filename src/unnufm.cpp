@@ -224,6 +224,8 @@ unnufm_storyboard_t* unnufm::ScriptParser::toStoryboard(nlohmann::json j) {
 					unnufm_cue_t* cue = (unnufm_cue_t*) malloc(sizeof(unnufm_cue_t));
 					if (cueJson.contains("timing") && cueJson["timing"].is_string()) {
 						cue->timing = unnufm::unnufm_scene_timing_from_string(cueJson["timing"].get<std::string>());
+					} else {
+						cue->timing = unnufm_scene_timing::TIMING_SEQUENTIAL;
 					}
 					cue->stagger = cueJson.value("stagger", 0.7);
 					cue->dynamic = cueJson.value("dynamic", false);
@@ -487,7 +489,8 @@ void unnufm::ProductionWrangler::play(const unnufm_scene_t* scene, const unnufm_
 unnufm_performance_t* unnufm::ProductionWrangler::toPerformance(const unnufm_cue_line_t* line, const unnufm_speaker_list_t* voices) {
 	unnufm_performance_t* placeholder = (unnufm_performance_t*) malloc(sizeof(unnufm_performance_t));
 	placeholder->line = (unnufm_cue_line_t*) malloc(sizeof(unnufm_cue_line_t));
-	placeholder->line->actions =   line->actions;
+	placeholder->line->actions =  line->actions;
+	placeholder->line->n_actions = line->n_actions;
 	placeholder->line->delay = line->delay;
 	placeholder->line->emotion = line->emotion;	
 	placeholder->line->lipSync = line->lipSync;
@@ -511,7 +514,9 @@ unnufm_take_t* unnufm::ProductionWrangler::toTake(const unnufm_cue_t* cue, const
 	take->stagger = cue->stagger;
 	take->dynamic = cue->dynamic;
 	take->sounds = cue->sounds;
+	take->n_sounds = cue->n_sounds;
 	take->shots = cue->shots;
+	take->n_shots = cue->n_shots;
 	if (cue->n_lines > 0 && cue->lines) {
 		std::vector<unnufm_performance_t*> performances;
 		for (int i = 0; i < cue->n_lines; i++) {

@@ -169,7 +169,7 @@ typedef struct unnufm_cue {
 } unnufm_cue_t;
 
 typedef struct unnufm_take {
-	unnufm_scene_timing_t timing; // sequential, simultaneous, overlap, branch
+	unnufm_scene_timing_t timing = unnufm_scene_timing::TIMING_SEQUENTIAL;; // sequential, simultaneous, overlap, branch
 	double stagger = 0.7; // NEW: default stagger for overlap
 	bool dynamic = false; // NEW: allow real-time modification
 	unnufm_performance_t** performances;

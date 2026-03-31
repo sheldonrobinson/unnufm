@@ -351,7 +351,7 @@ namespace unnufm {
 			if (audio) {
 				if (audio->n_text > 0 && audio->text) { free(audio->text); audio->text = NULL; }
 				if (audio->chunk) audio_chunk_ptr(audio->chunk).reset();
-				delete audio;
+				free(audio);
 			}
 		}
 	};
