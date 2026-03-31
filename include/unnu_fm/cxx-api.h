@@ -255,9 +255,9 @@ namespace unnufm {
 				free(speaker);
 			}
 		}
-	};
+	} unnufm_speaker_ref_deleter_t;
 
-	typedef std::unique_ptr<unnufm_speaker_ref_t, unnufm_speaker_ref_deleter> unnufm_speaker_ref_ptr;
+	typedef std::unique_ptr<unnufm_speaker_ref_t, unnufm_speaker_ref_deleter_t> unnufm_speaker_ref_ptr;
 
 	typedef struct unnufm_speaker_list_deleter {
 		void operator()(unnufm_speaker_list_t* list) const {
@@ -271,9 +271,9 @@ namespace unnufm {
 				free(list);
 			}
 		}
-	};
+	} unnufm_speaker_list_deleter_t;
 
-	typedef std::unique_ptr<unnufm_speaker_list_t, unnufm_speaker_list_deleter> unnufm_speaker_list_ptr;
+	typedef std::unique_ptr<unnufm_speaker_list_t, unnufm_speaker_list_deleter_t> unnufm_speaker_list_ptr;
 
 	typedef struct sound_cue_deleter {
 		void operator()(unnufm_sound_cue_t* cue) const {
@@ -282,22 +282,20 @@ namespace unnufm {
 				free(cue);
 			}
 		}
-	};
+	} sound_cue_deleter_t;
 
-	typedef std::unique_ptr<unnufm_sound_cue_t, sound_cue_deleter> sound_cue_ptr;
+	typedef std::unique_ptr<unnufm_sound_cue_t, sound_cue_deleter_t> sound_cue_ptr;
 
 	typedef struct camera_cue_deleter {
 		void operator()(unnufm_camera_cue_t* cue) const {
 			if (cue) {
 				if (cue->target) { free(cue->target); cue->target = NULL; }
-				delete cue;
+				free(cue);
 			}
 		}
-	};
+	} camera_cue_deleter_t;
 
-	typedef std::unique_ptr<unnufm_camera_cue_t, camera_cue_deleter> camera_cue_ptr;
-
-	
+	typedef std::unique_ptr<unnufm_camera_cue_t, camera_cue_deleter_t> camera_cue_ptr;
 
 	typedef struct action_deleter {
 		void operator()(unnufm_action_t* action) const {
@@ -309,11 +307,9 @@ namespace unnufm {
 				free(action);
 			}
 		}
-	};
+	} action_deleter_t;
 
-	typedef std::unique_ptr<unnufm_action_t, action_deleter> action_ptr;
-
-	
+	typedef std::unique_ptr<unnufm_action_t, action_deleter_t> action_ptr;
 
 	typedef struct cue_line_deleter {
 		void operator()(unnufm_cue_line_t* line) const {
@@ -329,9 +325,9 @@ namespace unnufm {
 				free(line);
 			}
 		}
-	};
+	} cue_line_deleter_t;
 
-	typedef std::unique_ptr<unnufm_cue_line_t, cue_line_deleter> cue_line_ptr;
+	typedef std::unique_ptr<unnufm_cue_line_t, cue_line_deleter_t> cue_line_ptr;
 	
 	typedef struct audio_chunk_deleter {
 		void operator()(unnufm_audio_chunk_t* chunk) const {
@@ -340,9 +336,9 @@ namespace unnufm {
 				free(chunk);
 			}
 		}
-	};
+	} audio_chunk_deleter_t;
 
-	typedef std::unique_ptr<unnufm_audio_chunk_t, audio_chunk_deleter> audio_chunk_ptr;
+	typedef std::unique_ptr<unnufm_audio_chunk_t, audio_chunk_deleter_t> audio_chunk_ptr;
 
 	
 
@@ -354,9 +350,9 @@ namespace unnufm {
 				free(audio);
 			}
 		}
-	};
+	} audio_deleter_t;
 
-	typedef std::unique_ptr<unnufm_audio_t, audio_deleter> audio_ptr;
+	typedef std::unique_ptr<unnufm_audio_t, audio_deleter_t> audio_ptr;
 
 	typedef struct performance_deleter {
 		void operator()(unnufm_performance_t* performance) const {
@@ -366,9 +362,9 @@ namespace unnufm {
 				delete performance;
 			}
 		}
-	};
+	} performance_deleter_t;
 
-	typedef std::unique_ptr<unnufm_performance_t, performance_deleter> performance_ptr;
+	typedef std::unique_ptr<unnufm_performance_t, performance_deleter_t> performance_ptr;
 
 	typedef struct cue_deleter {
 		void operator()(unnufm_cue_t* cue) const {
@@ -394,9 +390,9 @@ namespace unnufm {
 				free(cue);
 			}
 		}
-	};
+	} cue_deleter_t;
 
-	typedef std::unique_ptr<unnufm_cue_t, cue_deleter> cue_ptr;
+	typedef std::unique_ptr<unnufm_cue_t, cue_deleter_t> cue_ptr;
 	
 	
 
@@ -424,9 +420,9 @@ namespace unnufm {
 				free(take);
 			}
 		}
-	};
+	} take_deleter_t;
 
-	typedef std::unique_ptr<unnufm_take_t, take_deleter> take_ptr;
+	typedef std::unique_ptr<unnufm_take_t, take_deleter_t> take_ptr;
 
 	typedef struct scene_deleter {
 		void operator()(unnufm_scene_t* scene) const {
@@ -444,9 +440,9 @@ namespace unnufm {
 				free(scene);
 			}
 		}
-	};
+	} scene_deleter_t;
 
-	typedef std::unique_ptr<unnufm_scene_t, scene_deleter> scene_ptr;
+	typedef std::unique_ptr<unnufm_scene_t, scene_deleter_t> scene_ptr;
 
 	
 
@@ -466,9 +462,9 @@ namespace unnufm {
 				free(skit);
 			}
 		}
-	};
+	} skit_deleter_t;
 
-	typedef std::unique_ptr<unnufm_skit_t, skit_deleter> skit_ptr;
+	typedef std::unique_ptr<unnufm_skit_t, skit_deleter_t> skit_ptr;
 
 	typedef struct storyboard_deleter {
 		void operator()(unnufm_storyboard_t* story) const {
@@ -483,9 +479,9 @@ namespace unnufm {
 				free(story);
 			}
 		}
-	};
+	} storyboard_deleter_t;
 
-	typedef std::unique_ptr<unnufm_storyboard_t, storyboard_deleter> storyboard_ptr;
+	typedef std::unique_ptr<unnufm_storyboard_t, storyboard_deleter_t> storyboard_ptr;
 	
 	// ---------------- Storyboard Class ----------------
 	class Storyboard {
